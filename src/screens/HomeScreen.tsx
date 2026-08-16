@@ -20,11 +20,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 
   const handleProductPress = (product: Product) => {
-    if (product.id === 'trigger-item') {
-      navigation.navigate('AccountVerify', { triggerItem: product });
-    } else {
-      navigation.navigate('ProductDetail', { product });
-    }
+    navigation.navigate('ProductDetail', { product });
   };
 
   const handleSelectCategory = (id: string, name: string) => {

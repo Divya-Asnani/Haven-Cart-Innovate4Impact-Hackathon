@@ -4,3 +4,7 @@ dist/
 web-build/
 *.log
 .env
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/

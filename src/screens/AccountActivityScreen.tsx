@@ -10,8 +10,9 @@ import {
 import { MapPin, HelpCircle, FileText, ChevronRight, ArrowLeft } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { getAccessToken, clearTokens, api } from '../api';
 
-export const SessionHomeScreen: React.FC<{ route?: any; navigation: any }> = ({ navigation }) => {
+export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> = ({ navigation }) => {
   const { registerInactivityReset, triggerTouchActivity } = useApp();
 
   // Register 60-second touch inactivity timer to automatically return to Home
@@ -19,8 +20,36 @@ export const SessionHomeScreen: React.FC<{ route?: any; navigation: any }> = ({ 
     const unregister = registerInactivityReset(() => {
       navigation.navigate('MainTabs');
     });
+
+    let heartbeatInterval: NodeJS.Timeout;
+
+    const startHeartbeat = async () => {
+      const token = await getAccessToken();
+      if (!token) {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        return;
+      }
+      
+      heartbeatInterval = setInterval(async () => {
+        try {
+          const res = await api.sendHeartbeat(token);
+          if (res.valid === false) {
+             await clearTokens();
+             navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+          }
+        } catch (e) {
+          // Silent navigation on error
+          await clearTokens();
+          navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        }
+      }, 15000);
+    };
+
+    startHeartbeat();
+
     return () => {
       unregister();
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
     };
   }, []);
 

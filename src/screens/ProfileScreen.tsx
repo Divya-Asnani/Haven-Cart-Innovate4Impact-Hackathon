@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
-import { MapPin, CreditCard, HelpCircle, ChevronRight, Package } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Button } from 'react-native';
+import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut } from 'lucide-react-native';
 
 import { COLORS } from '../constants/theme';
+import { useApp } from '../context/AppContext';
 
 const ORDERS_HISTORY = [
   {
@@ -22,6 +23,31 @@ const ORDERS_HISTORY = [
 ];
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { isLoggedIn, logout } = useApp();
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 12 }}>Not Logged In</Text>
+        <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>
+          Please login or create an account to view your profile and orders.
+        </Text>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Login')}
+          style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', marginBottom: 12 }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Login</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Signup')}
+          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.primary }}
+        >
+          <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>Create Account</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }}>
       <ScrollView contentContainerStyle={{ padding: 12 }} showsVerticalScrollIndicator={false}>
@@ -117,7 +143,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           }}
         >
           <TouchableOpacity
-            onPress={() => navigation.navigate('AccountPlaceholder', { title: 'Saved Addresses' })}
+            onPress={() => navigation.navigate('LocationSettings')}
             style={{
               padding: 14,
               flexDirection: 'row',
@@ -130,7 +156,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <MapPin size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
-                Saved Addresses
+                Location Settings
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />
@@ -163,6 +189,8 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -172,6 +200,25 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={async () => {
+              await logout();
+            }}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <LogOut size={18} color={COLORS.textSecondary} />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
+                Logout
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>

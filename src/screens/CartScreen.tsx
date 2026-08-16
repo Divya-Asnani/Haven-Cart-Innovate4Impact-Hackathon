@@ -74,7 +74,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text, textTransform: 'uppercase' }}>
                         {item.brand}
                       </Text>
-                      <TouchableOpacity onPress={() => removeFromCart(idx)}>
+                      <TouchableOpacity onPress={() => removeFromCart(item.cartItemId || idx.toString())}>
                         <Trash2 size={16} color={COLORS.textMuted} />
                       </TouchableOpacity>
                     </View>

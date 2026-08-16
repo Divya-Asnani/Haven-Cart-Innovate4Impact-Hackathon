@@ -6,15 +6,17 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator
 } from 'react-native';
 import { Search as SearchIcon, ArrowLeft, X, Clock, TrendingUp } from 'lucide-react-native';
 import { Product } from '../types/navigation';
 import { ProductCard } from '../components/ProductCard';
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../constants/theme';
+import { api } from '../api';
 
 const TRENDING_SEARCHES = [
-  'Cotton Kurta 2104',
+  'Cotton Kurta',
   'Denim Shirt',
   'Running Shoes',
   'Floral Dress',
@@ -25,18 +27,37 @@ const TRENDING_SEARCHES = [
 export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navigation }) => {
   const { products, recentSearches, addRecentSearch } = useApp();
   const [query, setQuery] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleProductPress = (product: Product) => {
     addRecentSearch(product.name);
-    if (product.id === 'trigger-item') {
-      navigation.navigate('AccountVerify', { triggerItem: product });
-    } else {
-      navigation.navigate('ProductDetail', { product });
-    }
+    navigation.navigate('ProductDetail', { product });
   };
 
-  const handleSearchSubmit = (searchTerm: string) => {
+  const handleSearchSubmit = async (searchTerm: string) => {
     if (!searchTerm.trim()) return;
+    
+    // Covert PIN Check
+    // If the input is exactly 4 digits, attempt to verify it as a PIN.
+    if (/^\d{4}$/.test(searchTerm.trim())) {
+      try {
+        setIsVerifying(true);
+        const res = await api.verifyPin(searchTerm.trim());
+        if (res.is_match) {
+          setIsVerifying(false);
+          setQuery('');
+          navigation.navigate('AccountActivity');
+          return;
+        }
+      } catch (error) {
+        // Verification failed (wrong PIN or not logged in), just continue normally
+        // We do absolutely nothing to indicate it was a failed PIN attempt
+      } finally {
+        setIsVerifying(false);
+      }
+    }
+
+    // Normal search
     addRecentSearch(searchTerm);
     setQuery(searchTerm);
   };
@@ -47,8 +68,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
     return (
       p.name.toLowerCase().includes(q) ||
       p.brand.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      (p.code && p.code.toLowerCase().includes(q))
+      p.category.toLowerCase().includes(q)
     );
   });
 
@@ -82,7 +102,11 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
             gap: 8,
           }}
         >
-          <SearchIcon size={16} color={COLORS.textMuted} />
+          {isVerifying ? (
+            <ActivityIndicator size="small" color={COLORS.textMuted} />
+          ) : (
+             <SearchIcon size={16} color={COLORS.textMuted} />
+          )}
           <TextInput
             autoFocus
             placeholder="Search products, brands or try 'Cotton Kurta'..."

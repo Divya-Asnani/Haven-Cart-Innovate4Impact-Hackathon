@@ -14,9 +14,11 @@ import { CategoryScreen } from '../screens/CategoryScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { CartScreen } from '../screens/CartScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { AccountVerifyScreen } from '../screens/AccountVerifyScreen';
-import { SessionHomeScreen } from '../screens/SessionHomeScreen';
+import { AccountActivityScreen } from '../screens/AccountActivityScreen';
 import { AccountPlaceholderScreen } from '../screens/AccountPlaceholderScreen';
+import { SignupScreen } from '../screens/SignupScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { LocationSettingsScreen } from '../screens/LocationSettingsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -98,8 +100,10 @@ export function RootNavigator() {
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="CategoryListing" component={CategoryScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <Stack.Screen name="AccountVerify" component={AccountVerifyScreen} />
-      <Stack.Screen name="SessionHome" component={SessionHomeScreen} />
+      <Stack.Screen name="Signup" component={SignupScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="LocationSettings" component={LocationSettingsScreen} />
+      <Stack.Screen name="AccountActivity" component={AccountActivityScreen} />
       <Stack.Screen name="AccountPlaceholder" component={AccountPlaceholderScreen} />
     </Stack.Navigator>
   );

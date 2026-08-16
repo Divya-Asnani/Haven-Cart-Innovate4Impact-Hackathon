@@ -15,11 +15,7 @@ export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ rou
   );
 
   const handleProductPress = (product: Product) => {
-    if (product.id === 'trigger-item') {
-      navigation.navigate('AccountVerify', { triggerItem: product });
-    } else {
-      navigation.navigate('ProductDetail', { product });
-    }
+    navigation.navigate('ProductDetail', { product });
   };
 
   return (

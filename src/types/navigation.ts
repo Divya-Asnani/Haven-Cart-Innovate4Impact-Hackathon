@@ -19,6 +19,7 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number;
   selectedSize: string;
+  cartItemId?: string;
 }
 
 export type RootStackParamList = {
@@ -26,8 +27,10 @@ export type RootStackParamList = {
   Search: undefined;
   CategoryListing: { categoryId: string; categoryName: string };
   ProductDetail: { product: Product };
-  AccountVerify: { triggerItem: Product };
-  SessionHome: undefined;
+  Signup: undefined;
+  Login: undefined;
+  LocationSettings: undefined;
+  AccountActivity: undefined;
   AccountPlaceholder: { title: string };
 };
 
