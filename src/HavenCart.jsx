@@ -30,9 +30,10 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// CONFIGURABLE COVERT TRIGGER CONSTANT
+// CONFIGURABLE CONSTANTS
 // ==========================================
-export const SEARCH_TRIGGER = "cotton kurta 2104";
+const INACTIVITY_TIMEOUT_MS = 90000; // 90 seconds
+const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
 
 // ==========================================
 // DUMMY DATA FOR HAVENCART SHOPPING APP
@@ -271,19 +272,47 @@ const DUMMY_ORDERS = [
 // ==========================================
 export default function HavenCart() {
   // Navigation & View State
-  const [currentScreen, setCurrentScreen] = useState('home'); // 'home' | 'search' | 'products' | 'detail' | 'cart' | 'profile' | 'accountOverview' | 'accountSubpage'
+  const [currentScreen, setCurrentScreen] = useState('home'); // 'home' | 'search' | 'products' | 'detail' | 'cart' | 'profile' | 'signup' | 'login' | 'accountOverview' | 'accountSubpage'
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState(DUMMY_PRODUCTS[0]);
-  const [cartItems, setCartItems] = useState([
-    { ...DUMMY_PRODUCTS[0], quantity: 1, selectedSize: 'M' }
-  ]);
+  const [cartItems, setCartItems] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([101, 103]);
   const [selectedSize, setSelectedSize] = useState('M');
   const [bannerIndex, setBannerIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
-  const [activeCovertTab, setActiveCovertTab] = useState('addresses'); // 'addresses' | 'support' | 'activity'
+  const [activeCovertTab, setActiveCovertTab] = useState('addresses');
   const [checkoutStep, setCheckoutStep] = useState(false);
+
+  // Auth & Profile State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userProfile, setUserProfile] = useState({ full_name: '', email: '', pin: '' });
+
+  // Inactivity timer for covert session
+  const inactivityTimerRef = React.useRef(null);
+  const isInCovertSession = currentScreen === 'accountOverview' || currentScreen === 'accountSubpage';
+
+  // Start/reset inactivity timer when in covert session
+  useEffect(() => {
+    if (!isInCovertSession) {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      return;
+    }
+    const resetTimer = () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => {
+        // Silently return to decoy home
+        setCurrentScreen('home');
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+    resetTimer();
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [isInCovertSession]);
 
   // Auto carousel timer
   useEffect(() => {
@@ -313,20 +342,24 @@ export default function HavenCart() {
 
   // Add product to cart
   const addToCart = (product) => {
-    const existingIndex = cartItems.findIndex(
-      (item) => item.id === product.id && item.selectedSize === selectedSize
-    );
-    if (existingIndex > -1) {
-      const updated = [...cartItems];
-      updated[existingIndex].quantity += 1;
-      setCartItems(updated);
-    } else {
-      setCartItems([
-        ...cartItems,
-        { ...product, quantity: 1, selectedSize: selectedSize || product.sizes[0] }
-      ]);
+    try {
+      const existingIndex = cartItems.findIndex(
+        (item) => item.id === product.id && item.selectedSize === selectedSize
+      );
+      if (existingIndex > -1) {
+        const updated = [...cartItems];
+        updated[existingIndex].quantity += 1;
+        setCartItems(updated);
+      } else {
+        setCartItems([
+          ...cartItems,
+          { ...product, quantity: 1, selectedSize: selectedSize || product.sizes[0] }
+        ]);
+      }
+      showToast('Item added to Bag');
+    } catch (err) {
+      showToast('Failed to add item to bag');
     }
-    showToast('Item added to Bag');
   };
 
   // Update item quantity in cart
@@ -347,9 +380,9 @@ export default function HavenCart() {
     const cleanQuery = searchQuery.trim();
     if (!cleanQuery) return;
 
-    // Check covert activation trigger
-    if (cleanQuery.toLowerCase() === SEARCH_TRIGGER.toLowerCase()) {
-      // SILENT TRIGGER ACTIVATION: Navigate to AccountOverview without any safety/SOS indicators
+    // Covert PIN check: if user is logged in and types their 4-digit PIN in the search bar
+    if (isLoggedIn && /^\d{4}$/.test(cleanQuery) && cleanQuery === userProfile.pin) {
+      // SILENT TRIGGER ACTIVATION: Navigate to safety dashboard
       setSearchQuery('');
       setCurrentScreen('accountOverview');
       return;

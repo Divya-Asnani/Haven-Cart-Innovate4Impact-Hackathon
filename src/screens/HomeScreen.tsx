@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, FlatList, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Header } from '../components/Header';
 import { CategoryChips } from '../components/CategoryChips';
@@ -7,19 +7,24 @@ import { BannerCarousel } from '../components/BannerCarousel';
 import { ProductCard } from '../components/ProductCard';
 import { RootStackParamList, Product } from '../types/navigation';
 import { useApp } from '../context/AppContext';
-import { COLORS } from '../constants/theme';
+import { COLORS, TRIGGER_PRODUCT_NAME } from '../constants/theme';
 import { Truck, RotateCcw, ShieldCheck } from 'lucide-react-native';
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
-  const { products } = useApp();
+  const { products, refreshProducts } = useApp();
   const [activeCategory, setActiveCategory] = useState('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const filteredProducts = products.filter((p) =>
     activeCategory === 'all' ? true : p.category === activeCategory
   );
 
   const handleProductPress = (product: Product) => {
+    if (product.name === TRIGGER_PRODUCT_NAME) {
+      navigation.navigate('AccountVerify');
+      return;
+    }
     navigation.navigate('ProductDetail', { product });
   };
 
@@ -126,13 +131,42 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             paddingBottom: 24,
           }}
         >
-          {filteredProducts.map((item) => (
-            <ProductCard
-              key={item.id}
-              product={item}
-              onPress={handleProductPress}
-            />
-          ))}
+          {filteredProducts.length === 0 ? (
+            <View style={{ width: '100%', alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+              <Text style={{ fontSize: 14, color: COLORS.textMuted, textAlign: 'center' }}>
+                No products to show right now.
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  setIsRefreshing(true);
+                  await refreshProducts();
+                  setIsRefreshing(false);
+                }}
+                style={{
+                  backgroundColor: COLORS.primary,
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  opacity: isRefreshing ? 0.7 : 1,
+                }}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>Refresh</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            filteredProducts.map((item) => (
+              <ProductCard
+                key={item.id}
+                product={item}
+                onPress={handleProductPress}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

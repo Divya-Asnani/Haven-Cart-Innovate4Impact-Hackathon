@@ -80,6 +80,17 @@ CREATE POLICY "Public profiles read" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Public products read" ON products FOR SELECT USING (true);
 CREATE POLICY "Public categories read" ON categories FOR SELECT USING (true);
 
+-- Wishlist: users can only access their own rows
+CREATE POLICY "Wishlist user select" ON wishlist FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Wishlist user insert" ON wishlist FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Wishlist user delete" ON wishlist FOR DELETE USING (user_id = auth.uid());
+
+-- Cart: users can only access their own rows
+CREATE POLICY "Cart user select" ON cart_items FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Cart user insert" ON cart_items FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Cart user delete" ON cart_items FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "Cart user update" ON cart_items FOR UPDATE USING (user_id = auth.uid());
+
 -- Seed Categories
 INSERT INTO categories (id, name, slug, icon_name) VALUES
 ('11111111-1111-1111-1111-111111111111', 'Men', 'men', 'user'),

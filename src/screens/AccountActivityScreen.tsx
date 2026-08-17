@@ -18,7 +18,8 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
   // Register 60-second touch inactivity timer to automatically return to Home
   useEffect(() => {
     const unregister = registerInactivityReset(() => {
-      navigation.navigate('MainTabs');
+      // Silent return to decoy Home — reset the stack so no safety screens remain
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     });
 
     let heartbeatInterval: NodeJS.Timeout;
@@ -76,7 +77,8 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
           <TouchableOpacity
             onPress={() => {
               triggerTouchActivity();
-              navigation.navigate('MainTabs');
+              // Reset stack so back press from Home won't return here
+              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }}
           >
             <ArrowLeft size={22} color={COLORS.text} />

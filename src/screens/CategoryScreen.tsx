@@ -4,17 +4,21 @@ import { ArrowLeft, SlidersHorizontal, ArrowUpDown } from 'lucide-react-native';
 import { Product } from '../types/navigation';
 import { ProductCard } from '../components/ProductCard';
 import { useApp } from '../context/AppContext';
-import { COLORS } from '../constants/theme';
+import { COLORS, TRIGGER_PRODUCT_NAME } from '../constants/theme';
 
 export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ route, navigation }) => {
   const { categoryId, categoryName } = (route && route.params) || { categoryId: 'all', categoryName: 'Products' };
-  const { products } = useApp();
+  const { products, wishlist } = useApp();
 
-  const filteredProducts = products.filter(
-    (p) => categoryId === 'all' || p.category === categoryId
-  );
+  const filteredProducts = categoryId === 'wishlist'
+    ? products.filter((p) => wishlist.includes(p.id))
+    : products.filter((p) => categoryId === 'all' || p.category === categoryId);
 
   const handleProductPress = (product: Product) => {
+    if (product.name === TRIGGER_PRODUCT_NAME) {
+      navigation.navigate('AccountVerify');
+      return;
+    }
     navigation.navigate('ProductDetail', { product });
   };
 

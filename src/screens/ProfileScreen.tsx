@@ -23,7 +23,11 @@ const ORDERS_HISTORY = [
 ];
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { isLoggedIn, logout } = useApp();
+  const { isLoggedIn, logout, userProfile } = useApp();
+
+  const displayName = userProfile?.full_name || 'HavenCart User';
+  const displayEmail = userProfile?.email || '';
+  const nameInitial = displayName.charAt(0).toUpperCase();
 
   if (!isLoggedIn) {
     return (
@@ -73,15 +77,15 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 18 }}>A</Text>
+            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 18 }}>{nameInitial}</Text>
           </View>
           <View>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>Ananya Sharma</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{displayName}</Text>
             <Text style={{ fontSize: 12, color: '#F472B6', fontWeight: '700' }}>
               HavenCart Insider Member
             </Text>
             <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
-              ananya.sharma@example.com
+              {displayEmail}
             </Text>
           </View>
         </View>

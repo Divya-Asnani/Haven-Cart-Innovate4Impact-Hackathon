@@ -46,7 +46,15 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
         if (res.is_match) {
           setIsVerifying(false);
           setQuery('');
-          navigation.navigate('AccountActivity');
+          // Reset the navigation stack: MainTabs at bottom, AccountActivity on top
+          // Back from AccountActivity will land on decoy Home, not the search screen
+          navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'MainTabs' },
+              { name: 'AccountActivity' },
+            ],
+          });
           return;
         }
       } catch (error) {
@@ -55,6 +63,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
       } finally {
         setIsVerifying(false);
       }
+      return;
     }
 
     // Normal search

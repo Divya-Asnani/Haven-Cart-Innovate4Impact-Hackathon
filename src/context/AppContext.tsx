@@ -3,13 +3,24 @@ import { Product, CartItem } from '../types/navigation';
 import { INACTIVITY_TIMEOUT_MS } from '../constants/theme';
 import { api, getAccessToken, clearTokens } from '../api';
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+}
+
 interface AppContextType {
   products: Product[];
   cart: CartItem[];
   wishlist: string[];
   recentSearches: string[];
   isLoading: boolean;
+  initError: string | null;
   isLoggedIn: boolean;
+  userProfile: UserProfile | null;
   addToCart: (product: Product, size: string) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (index: number, delta: number) => Promise<void>;
@@ -23,6 +34,7 @@ interface AppContextType {
   checkAuthStatus: () => Promise<void>;
   checkCovertTrigger: (productId: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  retryInit: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -38,36 +50,81 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     'Floral Dress'
   ]);
   const [isLoading, setIsLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [initAttempt, setInitAttempt] = useState(0);
 
-  // Initialize App
+  // Initialize App — retry on failure (Render free tier may need a cold-start)
   useEffect(() => {
-    const initApp = async () => {
+    let cancelled = false;
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY_MS = 3_000;
+
+    const initApp = async (attempt = 0) => {
+      setIsLoading(true);
+      setInitError(null);
+
       try {
+        const backendUp = await api.pingBackend();
+        if (!backendUp) {
+          throw new Error(
+            'The backend server is not responding. It may be starting up — please wait and try again.',
+          );
+        }
+
         await checkAuthStatus();
-        await refreshProducts();
-      } catch (error) {
-        console.error('Failed to initialize app', error);
+        const data = await refreshProducts();
+        if (data.length === 0 && attempt < MAX_RETRIES && !cancelled) {
+          console.log(`[HavenCart] No products received (attempt ${attempt + 1}), retrying...`);
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+          return initApp(attempt + 1);
+        }
+      } catch (error: any) {
+        console.error(`[HavenCart] Init failed (attempt ${attempt + 1})`, error);
+        if (attempt < MAX_RETRIES && !cancelled) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+          return initApp(attempt + 1);
+        }
+        if (!cancelled) {
+          setInitError(
+            error?.message ||
+              'Could not connect to the server. Check your internet connection and try again.',
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
+
     initApp();
-  }, []);
+    return () => { cancelled = true; };
+  }, [initAttempt]);
+
+  const retryInit = () => setInitAttempt(n => n + 1);
 
   const checkAuthStatus = async () => {
     const token = await getAccessToken();
     if (token) {
       setIsLoggedIn(true);
       await fetchCartAndWishlist();
+      // Fetch user profile
+      try {
+        const profile = await api.getProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error('Failed to fetch profile', err);
+      }
     } else {
       setIsLoggedIn(false);
+      setUserProfile(null);
     }
   };
 
   const logout = async () => {
     await clearTokens();
     setIsLoggedIn(false);
+    setUserProfile(null);
     setCart([]);
     setWishlist([]);
   };
@@ -157,16 +214,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addToCart = async (product: Product, size: string) => {
-    try {
-      const token = await getAccessToken();
-      if (token) {
-        await api.addToCart(product.id, 1, size);
-        await fetchCartAndWishlist();
-      } else {
-        setCart(prev => [...prev, { ...product, quantity: 1, selectedSize: size, cartItemId: Math.random().toString() }]);
-      }
-    } catch (error) {
-      console.error('Failed to add to cart', error);
+    const token = await getAccessToken();
+    if (token) {
+      await api.addToCart(product.id, 1, size);
+      await fetchCartAndWishlist();
+    } else {
+      setCart(prev => [...prev, { ...product, quantity: 1, selectedSize: size, cartItemId: Math.random().toString() }]);
     }
   };
 
@@ -248,7 +301,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         wishlist,
         recentSearches,
         isLoading,
+        initError,
         isLoggedIn,
+        userProfile,
         addToCart,
         removeFromCart,
         updateQuantity,
@@ -261,7 +316,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         fetchCartAndWishlist,
         checkAuthStatus,
         checkCovertTrigger,
-        logout
+        logout,
+        retryInit
       }}
     >
       {children}

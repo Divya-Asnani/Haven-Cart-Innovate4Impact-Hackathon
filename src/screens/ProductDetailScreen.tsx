@@ -17,6 +17,8 @@ import { RootStackParamList } from '../types/navigation';
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../constants/theme';
 
+const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 
 export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
@@ -28,12 +30,21 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const isWishlisted = wishlist.includes(product.id);
 
-  const handleAddToCart = () => {
-    addToCart(product, selectedSize);
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('Item added to Bag!', ToastAndroid.SHORT);
-    } else {
-      Alert.alert('Success', 'Item added to Bag!');
+  const handleAddToCart = async () => {
+    try {
+      await addToCart(product, selectedSize);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Item added to Bag!', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Success', 'Item added to Bag!');
+      }
+    } catch (err: any) {
+      const message = err?.message || 'Could not add item to bag. Please try again.';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(message, ToastAndroid.LONG);
+      } else {
+        Alert.alert('Error', message);
+      }
     }
   };
 
@@ -70,8 +81,9 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* Product Image */}
         <View style={{ height: 350, backgroundColor: COLORS.surface }}>
           <Image
-            source={{ uri: product.image }}
+            source={{ uri: product.image || FALLBACK_IMAGE }}
             style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+            defaultSource={{ uri: FALLBACK_IMAGE }}
           />
         </View>
 

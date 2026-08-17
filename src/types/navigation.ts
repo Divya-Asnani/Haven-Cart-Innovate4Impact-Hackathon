@@ -32,6 +32,8 @@ export type RootStackParamList = {
   LocationSettings: undefined;
   AccountActivity: undefined;
   AccountPlaceholder: { title: string };
+  AccountVerify: undefined;
+  SessionHome: undefined;
 };
 
 export type MainTabParamList = {

@@ -5,6 +5,15 @@ from app.api.auth_deps import get_current_user_id
 
 router = APIRouter(prefix="/api/v1/profile", tags=["Profile"])
 
+@router.get("/me")
+async def get_my_profile(user_id: str = Depends(get_current_user_id)):
+    response = supabase.table("profiles").select("id, full_name, email, phone, address, city").eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    return response.data[0]
+
 @router.put("/location")
 async def update_location(req: LocationUpdateRequest, user_id: str = Depends(get_current_user_id)):
     update_data = {

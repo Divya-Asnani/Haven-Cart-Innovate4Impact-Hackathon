@@ -5,6 +5,8 @@ import { Product } from '../types/navigation';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 
+const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
+
 interface ProductCardProps {
   product: Product;
   onPress: (product: Product) => void;
@@ -38,8 +40,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, styl
       <View style={{ height: 180, width: '100%', backgroundColor: COLORS.surface, position: 'relative' }}>
 
         <Image
-          source={{ uri: product.image }}
+          source={{ uri: product.image || FALLBACK_IMAGE }}
           style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+          defaultSource={{ uri: FALLBACK_IMAGE }}
         />
 
         {/* Wishlist Heart Icon */}

@@ -13,6 +13,8 @@ import { ShoppingBag, Trash2, Plus, Minus, Tag, CheckCircle2 } from 'lucide-reac
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../constants/theme';
 
+const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
+
 export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useApp();
   const [orderSuccessModal, setOrderSuccessModal] = useState(false);
@@ -63,7 +65,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 }}
               >
                 <Image
-                  source={{ uri: item.image }}
+                  source={{ uri: item.image || FALLBACK_IMAGE }}
                   style={{ width: 80, height: 100, borderRadius: 8, backgroundColor: COLORS.surface }}
                 />
 

@@ -19,6 +19,8 @@ import { AccountPlaceholderScreen } from '../screens/AccountPlaceholderScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { LocationSettingsScreen } from '../screens/LocationSettingsScreen';
+import { AccountVerifyScreen } from '../screens/AccountVerifyScreen';
+import { SessionHomeScreen } from '../screens/SessionHomeScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -66,7 +68,7 @@ function MainTabNavigator() {
       <Tab.Screen
         name="Wishlist"
         component={CategoryScreen}
-        initialParams={{ categoryId: 'all', categoryName: 'My Wishlist' }}
+        initialParams={{ categoryId: 'wishlist', categoryName: 'My Wishlist' }}
         options={{
           tabBarBadge: wishlist.length > 0 ? wishlist.length : undefined,
           tabBarBadgeStyle: { backgroundColor: COLORS.primary, fontSize: 10 },
@@ -105,6 +107,8 @@ export function RootNavigator() {
       <Stack.Screen name="LocationSettings" component={LocationSettingsScreen} />
       <Stack.Screen name="AccountActivity" component={AccountActivityScreen} />
       <Stack.Screen name="AccountPlaceholder" component={AccountPlaceholderScreen} />
+      <Stack.Screen name="AccountVerify" component={AccountVerifyScreen} />
+      <Stack.Screen name="SessionHome" component={SessionHomeScreen} />
     </Stack.Navigator>
   );
 }

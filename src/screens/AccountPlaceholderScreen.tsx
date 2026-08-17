@@ -21,7 +21,8 @@ export const AccountPlaceholderScreen = ({ route, navigation }: AccountPlacehold
 
   useEffect(() => {
     const unregister = registerInactivityReset(() => {
-      navigation.navigate('MainTabs');
+      // Silent return to decoy Home — reset stack so no safety screens remain
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     });
     return () => {
       unregister();
