@@ -50,7 +50,7 @@ export const LocationSettingsScreen: React.FC = () => {
       
       setSuccess('Location updated successfully!');
     } catch (err: any) {
-      setError('Could not fetch location. Please enter manually.');
+      // setError('Could not fetch location. Please enter manually.');
     } finally {
       setIsLoading(false);
     }
