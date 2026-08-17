@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Button } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Button } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut } from 'lucide-react-native';
 
 import { COLORS } from '../constants/theme';

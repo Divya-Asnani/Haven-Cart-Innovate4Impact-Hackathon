@@ -21,8 +21,6 @@ console.log('[HavenCart] API_BASE_URL:', API_BASE_URL);
 export const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
 
 // ── Fetch with timeout ─────────────────────────────────────────────────
-// Render free-tier can sleep; give it up to 30s for cold starts,
-// but don't let the app hang forever.
 const FETCH_TIMEOUT_MS = 30_000;
 const HEALTH_CHECK_TIMEOUT_MS = 15_000;
 
@@ -43,7 +41,6 @@ const fetchWithTimeout = async (
         'Server is not responding. It may be starting up — please try again in a moment.',
       );
     }
-    // Network errors (DNS failure, no internet, etc.)
     if (
       err.message?.includes('Network request failed') ||
       err.message?.includes('Failed to fetch')
@@ -83,6 +80,10 @@ export const getAccessToken = async (): Promise<string | null> => {
   return await SecureStore.getItemAsync('access_token');
 };
 
+export const getRefreshToken = async (): Promise<string | null> => {
+  return await SecureStore.getItemAsync('refresh_token');
+};
+
 export const setTokens = async (accessToken: string, refreshToken: string) => {
   await SecureStore.setItemAsync('access_token', accessToken);
   await SecureStore.setItemAsync('refresh_token', refreshToken);
@@ -97,25 +98,107 @@ export const clearTokens = async () => {
 const handleResponse = async (res: Response) => {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Request failed (${res.status})`);
+    const detail = errorData.detail;
+    const message = typeof detail === 'string'
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((d: any) => d.msg ?? String(d)).join(', ')
+        : `Request failed (${res.status})`;
+    throw new Error(message);
   }
   return res.json();
 };
 
-const authHeaders = async () => {
-  const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
+// ── Authenticated fetch with automatic token refresh on 401 ───────────────
+let refreshInFlight: Promise<string | null> | null = null;
+
+const tryRefreshAccessToken = async (): Promise<string | null> => {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const storedRefresh = await getRefreshToken();
+      if (!storedRefresh) return null;
+
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: storedRefresh }),
+      });
+
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      if (!data.access_token) return null;
+
+      await SecureStore.setItemAsync('access_token', data.access_token);
+      return data.access_token as string;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+};
+
+const authFetch = async (
+  url: string,
+  init: RequestInit = {},
+  tokenOverride?: string,
+): Promise<Response> => {
+  const makeRequest = async (token: string | null) => {
+    const baseHeaders = (init.headers as Record<string, string> | undefined) ?? {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...baseHeaders,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    return fetchWithTimeout(url, { ...init, headers });
   };
+
+  const token = tokenOverride ?? (await getAccessToken());
+  let res = await makeRequest(token);
+
+  // On 401, attempt one token refresh and retry (skip when using an explicit override)
+  if (res.status === 401 && tokenOverride === undefined) {
+    const newToken = await tryRefreshAccessToken();
+    if (newToken) {
+      res = await makeRequest(newToken);
+    }
+  }
+
+  return res;
+};
+
+export const isAuthError = (err: unknown): boolean => {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('Could not validate credentials') ||
+    msg.includes('Token has expired') ||
+    msg.includes('Invalid authentication credentials') ||
+    msg.includes('Profile not found') ||
+    msg.includes('User not found')
+  );
 };
 
 // ── API methods ─────────────────────────────────────────────────────────
 export const api = {
-  /** Quick ping to wake up Render and verify connectivity. */
+  /** Wake Render and verify connectivity. Tries /health first, falls back to /. */
   pingBackend: async (): Promise<boolean> => {
     try {
-      const res = await fetchWithTimeout(`${API_ROOT_URL}/health`, {}, HEALTH_CHECK_TIMEOUT_MS);
+      let res = await fetchWithTimeout(
+        `${API_ROOT_URL}/health`,
+        {},
+        HEALTH_CHECK_TIMEOUT_MS,
+      );
+      if (res.ok) return true;
+
+      // Older deployments may not have /health yet
+      if (res.status === 404) {
+        res = await fetchWithTimeout(`${API_ROOT_URL}/`, {}, HEALTH_CHECK_TIMEOUT_MS);
+      }
       return res.ok;
     } catch {
       return false;
@@ -142,9 +225,8 @@ export const api = {
   },
 
   verifyPin: async (pin: string) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/auth/verify-pin`, {
+    const res = await authFetch(`${API_BASE_URL}/auth/verify-pin`, {
       method: 'POST',
-      headers: await authHeaders(),
       body: JSON.stringify({ pin }),
     });
     return handleResponse(res);
@@ -160,39 +242,33 @@ export const api = {
   },
 
   updateLocation: async (data: any) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/profile/location`, {
+    const res = await authFetch(`${API_BASE_URL}/profile/location`, {
       method: 'PUT',
-      headers: await authHeaders(),
       body: JSON.stringify(data),
     });
     return handleResponse(res);
   },
 
   getProfile: async () => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/profile/me`, {
+    const res = await authFetch(`${API_BASE_URL}/profile/me`, {
       method: 'GET',
-      headers: await authHeaders(),
     });
     return handleResponse(res);
   },
 
   // Session
   sendHeartbeat: async (tokenOverride?: string) => {
-    const token = tokenOverride ?? (await getAccessToken());
-    const res = await fetchWithTimeout(`${API_BASE_URL}/session/heartbeat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    const res = await authFetch(
+      `${API_BASE_URL}/session/heartbeat`,
+      { method: 'POST' },
+      tokenOverride,
+    );
     return handleResponse(res);
   },
 
   endSession: async () => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/session/end`, {
+    const res = await authFetch(`${API_BASE_URL}/session/end`, {
       method: 'POST',
-      headers: await authHeaders(),
     });
     return handleResponse(res);
   },
@@ -202,7 +278,7 @@ export const api = {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
     if (search) params.append('search', search);
-    
+
     const url = `${API_BASE_URL}/products${params.toString() ? '?' + params.toString() : ''}`;
     const res = await fetchWithTimeout(url);
     const data = await handleResponse(res);
@@ -217,45 +293,36 @@ export const api = {
 
   // Cart
   getCart: async (): Promise<any[]> => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/cart`, {
-      method: 'GET',
-      headers: await authHeaders(),
-    });
+    const res = await authFetch(`${API_BASE_URL}/cart`, { method: 'GET' });
     return handleResponse(res);
   },
 
   addToCart: async (productId: string, quantity: number, size: string) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/cart`, {
+    const res = await authFetch(`${API_BASE_URL}/cart`, {
       method: 'POST',
-      headers: await authHeaders(),
       body: JSON.stringify({ product_id: productId, quantity, size }),
     });
     return handleResponse(res);
   },
 
   removeFromCart: async (itemId: string) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/cart/${itemId}`, {
+    const res = await authFetch(`${API_BASE_URL}/cart/${itemId}`, {
       method: 'DELETE',
-      headers: await authHeaders(),
     });
     return handleResponse(res);
   },
 
   // Wishlist
   getWishlist: async (): Promise<any[]> => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/wishlist`, {
-      method: 'GET',
-      headers: await authHeaders(),
-    });
+    const res = await authFetch(`${API_BASE_URL}/wishlist`, { method: 'GET' });
     return handleResponse(res);
   },
 
   toggleWishlist: async (productId: string) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/wishlist`, {
+    const res = await authFetch(`${API_BASE_URL}/wishlist`, {
       method: 'POST',
-      headers: await authHeaders(),
       body: JSON.stringify({ product_id: productId }),
     });
     return handleResponse(res);
-  }
+  },
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Header } from '../components/Header';
 import { CategoryChips } from '../components/CategoryChips';

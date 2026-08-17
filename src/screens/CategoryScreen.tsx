@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, SlidersHorizontal, ArrowUpDown } from 'lucide-react-native';
 import { Product } from '../types/navigation';
 import { ProductCard } from '../components/ProductCard';

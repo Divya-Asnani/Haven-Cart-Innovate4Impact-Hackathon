@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useEffect } from 'react';
 import { Product, CartItem } from '../types/navigation';
 import { INACTIVITY_TIMEOUT_MS } from '../constants/theme';
-import { api, getAccessToken, clearTokens } from '../api';
+import { api, getAccessToken, clearTokens, isAuthError } from '../api';
 
 interface UserProfile {
   id: string;
@@ -32,7 +32,7 @@ interface AppContextType {
   refreshProducts: (category?: string, search?: string) => Promise<Product[]>;
   fetchCartAndWishlist: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
-  checkCovertTrigger: (productId: string) => Promise<boolean>;
+  checkCovertTrigger: (query: string) => Promise<boolean>;
   logout: () => Promise<void>;
   retryInit: () => void;
 }
@@ -103,25 +103,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const retryInit = () => setInitAttempt(n => n + 1);
 
-  const checkAuthStatus = async () => {
-    const token = await getAccessToken();
-    if (token) {
-      setIsLoggedIn(true);
-      await fetchCartAndWishlist();
-      // Fetch user profile
-      try {
-        const profile = await api.getProfile();
-        setUserProfile(profile);
-      } catch (err) {
-        console.error('Failed to fetch profile', err);
-      }
-    } else {
-      setIsLoggedIn(false);
-      setUserProfile(null);
-    }
-  };
-
-  const logout = async () => {
+  const clearAuthState = async () => {
     await clearTokens();
     setIsLoggedIn(false);
     setUserProfile(null);
@@ -129,14 +111,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setWishlist([]);
   };
 
-  const checkCovertTrigger = async (_productId: string) => {
+  const checkAuthStatus = async () => {
+    const token = await getAccessToken();
+    if (!token) {
+      setIsLoggedIn(false);
+      setUserProfile(null);
+      return;
+    }
+
+    setIsLoggedIn(true);
+    try {
+      const profile = await api.getProfile();
+      setUserProfile(profile);
+      await fetchCartAndWishlist();
+    } catch (err) {
+      if (isAuthError(err)) {
+        await clearAuthState();
+      } else {
+        console.error('Failed to fetch profile', err);
+      }
+    }
+  };
+
+  const logout = async () => {
+    await clearAuthState();
+  };
+
+  const checkCovertTrigger = async (query: string): Promise<boolean> => {
     const token = await getAccessToken();
     if (!token) return false;
 
     try {
-      return false;
-    } catch (error) {
-      console.error('Failed to evaluate covert trigger', error);
+      await api.verifyPin(query.trim());
+      return true;
+    } catch {
       return false;
     }
   };
@@ -175,7 +183,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const mappedWishlist = wishlistData.map(item => item.product_id);
       setWishlist(mappedWishlist);
     } catch (err) {
-      console.error('Failed to fetch cart/wishlist', err);
+      if (isAuthError(err)) {
+        await clearAuthState();
+      } else {
+        console.error('Failed to fetch cart/wishlist', err);
+      }
     }
   };
 

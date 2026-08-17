@@ -3,9 +3,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, FileText } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';

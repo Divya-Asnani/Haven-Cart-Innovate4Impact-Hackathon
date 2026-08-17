@@ -5,10 +5,10 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, Trash2, Plus, Minus, Tag, CheckCircle2 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../constants/theme';

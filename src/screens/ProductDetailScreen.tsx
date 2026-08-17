@@ -5,11 +5,11 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ToastAndroid,
   Platform,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ArrowLeft, Heart, ShoppingBag, Star } from 'lucide-react-native';
 
