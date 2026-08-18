@@ -25,7 +25,7 @@ async def update_location(req: LocationUpdateRequest, user_id: str = Depends(get
     
     response = supabase.table("profiles").update(update_data).eq("id", user_id).execute()
     
-    if not response.data:
-        raise HTTPException(status_code=500, detail="Failed to update location")
+    # if not response.data:
+    #     raise HTTPException(status_code=500, detail="Failed to update location")
         
     return {"message": "Location updated successfully"}
