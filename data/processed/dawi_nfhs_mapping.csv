@@ -1,0 +1,27 @@
+feature,dawi_item,rrr,weight,source_group,rule_weight,weight_matches_rule,nfhs_status,mapping_note
+violence_escalation,Increase in severity/frequency of physical violence,1.9,2,original_DA,2,True,related,Spousal violence is available; escalation itself is not directly measured.
+threat_to_kill,He threatened to kill,1.76,1,original_DA,1,True,not_available,No direct indicator in this NFHS-5 CSV.
+violent_jealousy,He is constantly/violently jealous,3.32,3,original_DA,3,True,not_available,No direct indicator in this NFHS-5 CSV.
+recent_separation,She left him in the past year,2.32,2,original_DA,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+lethal_weapon,Used/threatened with a lethal weapon,2.64,2,original_DA,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+avoids_arrest,Lied about behavior/avoided being arrested,3.52,3,original_DA,3,True,not_available,No direct indicator in this NFHS-5 CSV.
+strangulation,Choking/Strangulation,2.05,3,original_DA,2,False,not_available,No direct indicator in this NFHS-5 CSV.
+illegal_drug_use,Partner uses illegal drugs,1.86,2,original_DA,2,True,not_available,No direct partner drug-use indicator in this aggregated NFHS-5 CSV.
+problem_drinking,He is an alcoholic/problem drinker,1.87,2,original_DA,2,True,context_only,"Alcohol prevalence is available, but partner problem drinking is not directly measured."
+violence_during_pregnancy,She was beaten while pregnant,5.6,4,original_DA,4,True,direct_reference,Physical violence during any pregnancy is directly reported.
+partner_capable_of_killing,Partner is capable of killing her,2.04,2,original_DA,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+suicide_threat_attempt,She threatened/tried suicide,1.67,1,original_DA,1,True,not_available,No direct indicator in this NFHS-5 CSV.
+withholds_necessities,He keeps necessities from her,10.32,4,additional_DA_WI,4,True,not_available,No direct indicator in this NFHS-5 CSV.
+intimidating_behavior,He scares her with his behavior/body language,2.23,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+rumors,He/his family spreads rumors about her,1.7,1,additional_DA_WI,1,True,not_available,No direct indicator in this NFHS-5 CSV.
+false_accusations,He/his family makes false accusations,2.37,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+family_rejection,Rejection by her family/community because of false accusations,2.41,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+social_isolation,Husband isolates her from family/friends,2.69,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+inlaws_support_abuse,In-laws support partner abuse,9.83,4,additional_DA_WI,4,True,not_available,No direct indicator in this NFHS-5 CSV.
+infertility_related_abuse,Abuse for not being able to get pregnant,5.58,4,additional_DA_WI,4,True,not_available,No direct indicator in this NFHS-5 CSV.
+healthcare_neglect,He/in-laws did not care for healthcare needs,4.12,4,additional_DA_WI,4,True,not_available,No direct indicator in this NFHS-5 CSV.
+family_honor_threat,Threatened to harm/kill for family honor,2.83,3,additional_DA_WI,3,True,not_available,No direct indicator in this NFHS-5 CSV.
+leaving_threat,Threatened to harm/kill her for leaving,2.11,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+hide_abuse,Feels the need to hide husband abuse,2.47,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+lack_of_support,Family/community members lack support,2.65,2,additional_DA_WI,2,True,not_available,No direct indicator in this NFHS-5 CSV.
+family_supports_abuse,Parents/siblings support her abuse,2.81,3,additional_DA_WI,3,True,not_available,No direct indicator in this NFHS-5 CSV.

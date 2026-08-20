@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './storage/secureStoreWrapper';
 import { Product } from './types/navigation';
 
 const normalizeBaseUrl = (url: string) => url.trim().replace(/\/+$/, '');
@@ -143,7 +143,7 @@ const tryRefreshAccessToken = async (): Promise<string | null> => {
   return refreshInFlight;
 };
 
-const authFetch = async (
+export const authFetch = async (
   url: string,
   init: RequestInit = {},
   tokenOverride?: string,

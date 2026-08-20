@@ -8,3 +8,34 @@ backend/.env
 backend/venv/
 backend/__pycache__/
 backend/**/__pycache__/
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Python / Jupyter temporary files
+*.log
+.venv/
+
+test_evidence_api.js
+test_evidence_e2e.js
+test_inference.js
+test_rule_engine.js
+test_supabase_rpc.js
