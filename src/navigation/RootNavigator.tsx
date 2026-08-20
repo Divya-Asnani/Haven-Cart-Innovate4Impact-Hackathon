@@ -21,6 +21,9 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { LocationSettingsScreen } from '../screens/LocationSettingsScreen';
 import { AccountVerifyScreen } from '../screens/AccountVerifyScreen';
 import { SessionHomeScreen } from '../screens/SessionHomeScreen';
+import { SafetyInterviewScreen } from '../screens/SafetyInterviewScreen';
+import { EvidenceVaultScreen } from '../screens/EvidenceVaultScreen';
+import { EvidenceCaptureScreen } from '../screens/EvidenceCaptureScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -109,6 +112,9 @@ export function RootNavigator() {
       <Stack.Screen name="AccountPlaceholder" component={AccountPlaceholderScreen} />
       <Stack.Screen name="AccountVerify" component={AccountVerifyScreen} />
       <Stack.Screen name="SessionHome" component={SessionHomeScreen} />
+      <Stack.Screen name="SafetyInterview" component={SafetyInterviewScreen} />
+      <Stack.Screen name="EvidenceVault" component={EvidenceVaultScreen} />
+      <Stack.Screen name="EvidenceCapture" component={EvidenceCaptureScreen} />
     </Stack.Navigator>
   );
 }

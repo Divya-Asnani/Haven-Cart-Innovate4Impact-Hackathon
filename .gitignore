@@ -32,3 +32,10 @@ Thumbs.db
 
 # Python / Jupyter temporary files
 *.log
+.venv/
+
+test_evidence_api.js
+test_evidence_e2e.js
+test_inference.js
+test_rule_engine.js
+test_supabase_rpc.js
