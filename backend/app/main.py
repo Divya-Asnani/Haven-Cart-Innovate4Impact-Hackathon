@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, session, products, cart, wishlist, profile, safety, evidence
+from app.api import auth, session, products, cart, wishlist, profile, safety, evidence, support_services, trusted_contacts, escalation, ngo_portal
 
 app = FastAPI(
     title="HavenCart API",
@@ -29,6 +29,10 @@ app.include_router(wishlist.router)
 app.include_router(profile.router)
 app.include_router(safety.router)
 app.include_router(evidence.router)
+app.include_router(support_services.router)
+app.include_router(trusted_contacts.router)
+app.include_router(escalation.router)
+app.include_router(ngo_portal.router)
 
 @app.get("/")
 def root():

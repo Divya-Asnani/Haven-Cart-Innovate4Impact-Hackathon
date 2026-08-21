@@ -18,6 +18,8 @@ import { useApp } from '../context/AppContext';
 import { enqueueEvidence, EvidenceType } from '../storage/evidenceQueue';
 import * as FileSystem from 'expo-file-system';
 
+const CameraComponent: any = CameraView;
+
 export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
   const { registerInactivityReset, triggerTouchActivity, currentRiskAssessment, clearSafetyState } = useApp();
   
@@ -26,7 +28,7 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
   
   // Camera state
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
+  const cameraRef = useRef<any>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   
   // Audio state
@@ -81,12 +83,12 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
         payloadBase64 = textContent; // Text stored directly
       } else if (activeTab === 'PHOTO') {
         // Read photo as base64
-        payloadBase64 = await FileSystem.readAsStringAsync(capturedPhoto as string, { encoding: FileSystem.EncodingType.Base64 });
+        payloadBase64 = await FileSystem.readAsStringAsync(capturedPhoto as string, { encoding: 'base64' });
         // Clean up temp file
         await FileSystem.deleteAsync(capturedPhoto as string, { idempotent: true });
       } else if (activeTab === 'AUDIO') {
         // Read audio as base64
-        payloadBase64 = await FileSystem.readAsStringAsync(audioUri as string, { encoding: FileSystem.EncodingType.Base64 });
+        payloadBase64 = await FileSystem.readAsStringAsync(audioUri as string, { encoding: 'base64' });
         await FileSystem.deleteAsync(audioUri as string, { idempotent: true });
       }
 
@@ -213,7 +215,7 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
               placeholder="Enter secure notes here. This will be encrypted locally..."
               placeholderTextColor={COLORS.textMuted}
               value={textContent}
-              onChangeText={(t) => { triggerTouchActivity(); setTextContent(t); }}
+              onChangeText={(t: string) => { triggerTouchActivity(); setTextContent(t); }}
             />
           )}
 
@@ -239,13 +241,13 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
                   </View>
                 </View>
               ) : (
-                <CameraView style={{ flex: 1 }} facing="back" ref={cameraRef}>
+                <CameraComponent style={{ flex: 1 }} facing="back" ref={cameraRef}>
                   <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end', padding: 32, alignItems: 'center' }}>
                     <TouchableOpacity onPress={takePhoto} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }}>
                       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' }} />
                     </TouchableOpacity>
                   </View>
-                </CameraView>
+                </CameraComponent>
               )}
             </View>
           )}

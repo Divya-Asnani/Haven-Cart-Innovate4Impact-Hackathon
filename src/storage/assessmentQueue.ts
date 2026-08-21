@@ -150,7 +150,8 @@ export const syncOfflineAssessments = async () => {
   console.log(`[AssessmentQueue] number of pending assessments: ${pending.length}`);
   
   // Import dynamically to avoid circular dependencies if any
-  const { authFetch, API_BASE_URL, getAccessToken } = await import('../api');
+  const { authFetch, API_BASE_URL, getAccessToken, api } = await import('../api');
+
   
   const token = await getAccessToken();
   if (!token) {
@@ -191,6 +192,18 @@ export const syncOfflineAssessments = async () => {
       if (res.ok) {
         await markAssessmentSynced(assessment.local_assessment_id);
         console.log(`[AssessmentQueue] SYNC SUCCESS for ${assessment.local_assessment_id}`);
+
+        // Feature 5: Emergency Escalation
+        if (assessment.final_risk_level === 'HIGH') {
+          console.log(`[AssessmentQueue] Triggering Emergency Escalation for ${assessment.local_assessment_id}`);
+          try {
+            const escalationRes = await api.escalateAssessment(assessment.local_assessment_id);
+            console.log(`[AssessmentQueue] Escalation successful:`, escalationRes);
+          } catch (escErr: any) {
+            console.error(`[AssessmentQueue] Escalation failed for ${assessment.local_assessment_id}:`, escErr);
+            // We do not fail the sync if escalation fails, it can be retried or handled separately.
+          }
+        }
       } else if (res.status === 401) {
         console.warn(`[AssessmentQueue] Auth failed. Stopping sync.`);
         break; // Stop syncing until auth is restored

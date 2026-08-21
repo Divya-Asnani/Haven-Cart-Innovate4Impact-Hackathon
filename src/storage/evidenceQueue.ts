@@ -115,6 +115,12 @@ export const deleteEvidence = async (evidenceId: string) => {
       if (fileInfo.exists) {
         await FileSystem.deleteAsync(item.file_path);
       }
+      
+      const pekPath = item.file_path.replace('.enc', '.pek.enc');
+      const pekInfo = await FileSystem.getInfoAsync(pekPath);
+      if (pekInfo.exists) {
+        await FileSystem.deleteAsync(pekPath);
+      }
     } catch (err) {
       console.error('[EvidenceQueue] Failed to delete file', err);
     }
@@ -154,7 +160,7 @@ export const syncOfflineEvidence = async () => {
       await updateEvidenceStatus(item.evidence_id, 'SYNCING');
 
       // Read encrypted file as base64 to send to backend
-      const encryptedBase64 = await FileSystem.readAsStringAsync(item.file_path, { encoding: FileSystem.EncodingType.Base64 });
+      const encryptedBase64 = await FileSystem.readAsStringAsync(item.file_path, { encoding: 'base64' });
 
       // The backend expects the IV and Tag inside the upload payload since they are not in PostgreSQL
       // We will create a JSON envelope containing the IV, Tag, and Ciphertext, and encode IT as Base64 to upload as the file payload.

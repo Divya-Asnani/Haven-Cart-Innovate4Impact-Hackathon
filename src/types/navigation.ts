@@ -37,6 +37,10 @@ export type RootStackParamList = {
   SafetyInterview: undefined;
   EvidenceVault: undefined;
   EvidenceCapture: undefined;
+  TrustedContacts: undefined;
+  ResponderLogin: undefined;
+  ResponderDashboard: undefined;
+  ResponderCaseDetail: { c?: any; assignmentId?: string };
 };
 
 export type MainTabParamList = {

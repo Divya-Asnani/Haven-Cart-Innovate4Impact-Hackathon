@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useRef, ReactNode, useEffec
 import { Product, CartItem } from '../types/navigation';
 import { INACTIVITY_TIMEOUT_MS } from '../constants/theme';
 import { api, getAccessToken, clearTokens, isAuthError } from '../api';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState } from 'react-native';
+import type { AppStateStatus } from 'react-native';
 import { syncOfflineAssessments } from '../storage/assessmentQueue';
 
 interface UserProfile {
@@ -118,7 +119,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     initApp();
     
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+    const subscription = AppState.addEventListener('change', (nextAppState: any) => {
       if (nextAppState === 'active') {
         syncOfflineAssessments();
       }

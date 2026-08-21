@@ -13,6 +13,7 @@
     "start:backend": "cd backend && venv\\Scripts\\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000 --reload"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
@@ -21,6 +22,7 @@
     "expo-av": "~16.0.8",
     "expo-camera": "~17.0.10",
     "expo-file-system": "~19.0.24",
+    "expo-linking": "~8.0.12",
     "expo-location": "~19.0.8",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",

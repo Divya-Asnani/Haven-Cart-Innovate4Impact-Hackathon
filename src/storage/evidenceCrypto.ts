@@ -7,7 +7,7 @@ const VAULT_KEY_STORAGE = 'havencart_vault_key';
 const LAST_HASH_STORAGE = 'havencart_last_evidence_hash';
 
 // Directories for evidence storage
-export const EVIDENCE_DIR = `${FileSystem.documentDirectory}evidence/`;
+export const EVIDENCE_DIR = `${(FileSystem as any).documentDirectory}evidence/`;
 
 /**
  * Ensures the evidence directory exists on the file system.
@@ -51,11 +51,11 @@ export const getLastHash = async (): Promise<{ hash: string, index: number }> =>
 };
 
 /**
- * Encrypts a payload (string) using AES-256-GCM.
- * @returns { encryptedHex, ivHex, tagHex }
+ * Encrypts a payload (string) using AES-256-GCM with a specified key.
+ * If no key is provided, uses the Master Vault Key (for legacy or PEK wrapping).
  */
-export const encryptPayload = async (plaintext: string) => {
-  const keyHex = await getOrCreateVaultKey();
+export const encryptPayload = async (plaintext: string, explicitKeyHex?: string) => {
+  const keyHex = explicitKeyHex || await getOrCreateVaultKey();
   const keyBytes = forge.util.hexToBytes(keyHex);
   
   // 12-byte IV for GCM
@@ -80,9 +80,10 @@ export const encryptPayload = async (plaintext: string) => {
 
 /**
  * Decrypts a payload using AES-256-GCM.
+ * If no key is provided, uses the Master Vault Key.
  */
-export const decryptPayload = async (encryptedHex: string, ivHex: string, tagHex: string): Promise<string> => {
-  const keyHex = await getOrCreateVaultKey();
+export const decryptPayload = async (encryptedHex: string, ivHex: string, tagHex: string, explicitKeyHex?: string): Promise<string> => {
+  const keyHex = explicitKeyHex || await getOrCreateVaultKey();
   const keyBytes = forge.util.hexToBytes(keyHex);
   const ivBytes = forge.util.hexToBytes(ivHex);
   const tagBytes = forge.util.hexToBytes(tagHex);
@@ -129,15 +130,38 @@ export const computeChainedHash = async (evidenceId: string, encryptedPayload: s
 export const saveEncryptedEvidence = async (evidenceId: string, base64Payload: string) => {
   await initEvidenceDir();
   
-  // Encrypt payload
-  const { encryptedHex, ivHex, tagHex } = await encryptPayload(base64Payload);
+  // 1. Generate PEK (Per-Evidence Key) - 256 bit
+  const pekBytes = forge.random.getBytesSync(32);
+  const pekHex = forge.util.bytesToHex(pekBytes);
   
-  // Compute chained hash
+  // 2. Encrypt payload using PEK
+  const { encryptedHex, ivHex, tagHex } = await encryptPayload(base64Payload, pekHex);
+  
+  // 3. Wrap PEK using Master Vault Key
+  const wrappedPEK = await encryptPayload(pekHex);
+  
+  // 4. Compute chained hash (over the PEK-encrypted ciphertext, preserving schema)
   const { newHash: chainedHash, prevHash, newIndex: chainIndex } = await computeChainedHash(evidenceId, encryptedHex);
   
-  // Save to file system
+  // 5. Save to file system safely
   const filePath = `${EVIDENCE_DIR}${evidenceId}.enc`;
-  await FileSystem.writeAsStringAsync(filePath, encryptedHex, { encoding: FileSystem.EncodingType.UTF8 });
+  const pekPath = `${EVIDENCE_DIR}${evidenceId}.pek.enc`;
+  
+  try {
+    // Write wrapped PEK first
+    await FileSystem.writeAsStringAsync(pekPath, JSON.stringify(wrappedPEK), { encoding: 'utf8' });
+    // Write encrypted payload
+    await FileSystem.writeAsStringAsync(filePath, encryptedHex, { encoding: 'utf8' });
+  } catch (err) {
+    // Failure safety: do not leave partial evidence
+    try {
+      await FileSystem.deleteAsync(pekPath, { idempotent: true });
+      await FileSystem.deleteAsync(filePath, { idempotent: true });
+    } catch (cleanupErr) {
+      console.error('Failed to cleanup partial evidence files', cleanupErr);
+    }
+    throw err;
+  }
   
   return {
     filePath,
@@ -153,6 +177,35 @@ export const saveEncryptedEvidence = async (evidenceId: string, base64Payload: s
  * Reads and decrypts evidence from FileSystem.
  */
 export const readEncryptedEvidence = async (filePath: string, ivHex: string, tagHex: string): Promise<string> => {
-  const encryptedHex = await FileSystem.readAsStringAsync(filePath, { encoding: FileSystem.EncodingType.UTF8 });
-  return await decryptPayload(encryptedHex, ivHex, tagHex);
+  const encryptedHex = await FileSystem.readAsStringAsync(filePath, { encoding: 'utf8' });
+  
+  // Determine if this is NEW (envelope) or LEGACY evidence
+  const pekPath = filePath.replace('.enc', '.pek.enc');
+  const pekInfo = await FileSystem.getInfoAsync(pekPath);
+  
+  let pekHex: string | undefined = undefined;
+  
+  if (pekInfo.exists) {
+    // Recover PEK using Master Vault Key
+    const pekDataStr = await FileSystem.readAsStringAsync(pekPath, { encoding: 'utf8' });
+    const wrappedPEK = JSON.parse(pekDataStr);
+    pekHex = await decryptPayload(wrappedPEK.encryptedHex, wrappedPEK.ivHex, wrappedPEK.tagHex);
+  }
+  
+  // Decrypt payload (will use pekHex if new, or fallback to Master Vault Key if legacy)
+  return await decryptPayload(encryptedHex, ivHex, tagHex, pekHex);
+};
+
+/**
+ * Recovers the plaintext Per-Evidence Key (PEK) for sharing.
+ * Returns null if this is legacy evidence without a PEK.
+ */
+export const recoverPEK = async (evidenceId: string): Promise<string | null> => {
+  const pekPath = `${EVIDENCE_DIR}${evidenceId}.pek.enc`;
+  const pekInfo = await FileSystem.getInfoAsync(pekPath);
+  if (!pekInfo.exists) return null;
+  
+  const pekDataStr = await FileSystem.readAsStringAsync(pekPath, { encoding: 'utf8' });
+  const wrappedPEK = JSON.parse(pekDataStr);
+  return await decryptPayload(wrappedPEK.encryptedHex, wrappedPEK.ivHex, wrappedPEK.tagHex);
 };

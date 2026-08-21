@@ -292,7 +292,7 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
             activeOpacity={0.8}
             onPress={() => {
               triggerTouchActivity();
-              navigation.navigate('AccountPlaceholder', { title: 'Location Sharing' });
+              navigation.navigate('LocationSettings');
             }}
             style={{
               backgroundColor: COLORS.card,
@@ -322,6 +322,45 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
               </Text>
               <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
                 Send your current location to a trusted contact
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Trusted Contacts Setup */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              triggerTouchActivity();
+              navigation.navigate('TrustedContacts');
+            }}
+            style={{
+              backgroundColor: COLORS.card,
+              padding: 16,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 16,
+              elevation: 1,
+            }}
+          >
+            <View
+              style={{
+                padding: 10,
+                backgroundColor: '#CCFBF1',
+                borderRadius: 10,
+              }}
+            >
+              <Users size={20} color="#0F766E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>
+                Manage Trusted Contacts
+              </Text>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                Setup contacts to notify in an emergency
               </Text>
             </View>
           </TouchableOpacity>

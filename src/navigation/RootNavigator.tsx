@@ -24,6 +24,10 @@ import { SessionHomeScreen } from '../screens/SessionHomeScreen';
 import { SafetyInterviewScreen } from '../screens/SafetyInterviewScreen';
 import { EvidenceVaultScreen } from '../screens/EvidenceVaultScreen';
 import { EvidenceCaptureScreen } from '../screens/EvidenceCaptureScreen';
+import { TrustedContactsScreen } from '../screens/TrustedContactsScreen';
+import { ResponderLoginScreen } from '../screens/ResponderLoginScreen';
+import { ResponderDashboardScreen } from '../screens/ResponderDashboardScreen';
+import { ResponderCaseDetailScreen } from '../screens/ResponderCaseDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -115,6 +119,10 @@ export function RootNavigator() {
       <Stack.Screen name="SafetyInterview" component={SafetyInterviewScreen} />
       <Stack.Screen name="EvidenceVault" component={EvidenceVaultScreen} />
       <Stack.Screen name="EvidenceCapture" component={EvidenceCaptureScreen} />
+      <Stack.Screen name="TrustedContacts" component={TrustedContactsScreen} />
+      <Stack.Screen name="ResponderLogin" component={ResponderLoginScreen} />
+      <Stack.Screen name="ResponderDashboard" component={ResponderDashboardScreen} />
+      <Stack.Screen name="ResponderCaseDetail" component={ResponderCaseDetailScreen} />
     </Stack.Navigator>
   );
 }

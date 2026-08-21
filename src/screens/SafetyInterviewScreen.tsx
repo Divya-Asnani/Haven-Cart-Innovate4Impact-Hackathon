@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react-native';
@@ -71,7 +72,20 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
         assessedAt: new Date().toISOString()
       });
 
-      navigation.goBack();
+      if (finalResult.finalRiskLevel === 'HIGH') {
+        if (Platform.OS === 'web') {
+          window.alert('Assessment Complete\n\nYour assessment has been securely saved. Based on your responses, we are discreetly notifying your trusted contacts and nearby support services.');
+          navigation.goBack();
+        } else {
+          Alert.alert(
+            'Assessment Complete',
+            'Your assessment has been securely saved. Based on your responses, we are discreetly notifying your trusted contacts and nearby support services.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        }
+      } else {
+        navigation.goBack();
+      }
     } catch (error) {
       console.error('[SafetyInterview] Assessment Engine Error:', error);
       Alert.alert(

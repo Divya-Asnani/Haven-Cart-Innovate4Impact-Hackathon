@@ -39,3 +39,30 @@ test_evidence_e2e.js
 test_inference.js
 test_rule_engine.js
 test_supabase_rpc.js
+verify_db.js
+Feature5_Database_Specification.md
+Haven_Cart_Safety_Evidence_Database_Specification.md
+# Local database setup / test scripts
+backend/apply_sql.js
+backend/apply_sql_admin.js
+backend/reset_db.js
+backend/test_audit_db.py
+backend/test_audit.py
+backend/test_evidence_integrity.py
+HavenCart_Complete_System_Report.md
+HavenCart_Complete_User_Flows_and_Test_Plan.md
+test_audit_db.jst
+test_audit_rest.py
+test_e2e_sync.py
+test_evidence_db.py
+test_phase8.py
+inspect_openai.js
+inspect_schema.js
+audit_logs.sql
+
+
+# Python virtual environments
+backend/.venv_311/
+backend/.venv/
+.venv/
+venv/
