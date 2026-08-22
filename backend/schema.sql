@@ -134,3 +134,30 @@ INSERT INTO products (name, brand, category_id, price, mrp, discount_percent, im
 ('Set of 4 Cushion Covers', 'Home Centre', '44444444-4444-4444-4444-444444444444', 499, 799, 37, 'https://picsum.photos/seed/p29/400/500', ARRAY['16x16'], 'Embroidered cushion covers.'),
 ('Sunscreen Lotion SPF 50', 'Neutrogena', '55555555-5555-5555-5555-555555555555', 549, 699, 21, 'https://picsum.photos/seed/p30/400/500', ARRAY['88ml'], 'Ultra sheer dry touch sunscreen.')
 ON CONFLICT DO NOTHING;
+
+ - -   r e s p o n d e r s 
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   r e s p o n d e r s   ( 
+     i d   U U I D   P R I M A R Y   K E Y   D E F A U L T   g e n _ r a n d o m _ u u i d ( ) , 
+     n a m e   T E X T   N O T   N U L L , 
+     e m a i l   T E X T   U N I Q U E   N O T   N U L L , 
+     p a s s w o r d _ h a s h   T E X T   N O T   N U L L , 
+     r o l e   T E X T   N O T   N U L L , 
+     c r e a t e d _ a t   T I M E S T A M P T Z   D E F A U L T   n o w ( ) 
+ ) ; 
+ 
+ - -   e m e r g e n c y _ a l e r t s 
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   e m e r g e n c y _ a l e r t s   ( 
+     i d   U U I D   P R I M A R Y   K E Y   D E F A U L T   g e n _ r a n d o m _ u u i d ( ) , 
+     c a s e _ i d   U U I D   R E F E R E N C E S   s a f e t y _ c a s e s ( i d )   N O T   N U L L , 
+     r e c i p i e n t _ t y p e   T E X T   C H E C K   ( r e c i p i e n t _ t y p e   I N   ( ' T R U S T E D _ C O N T A C T ' , ' N G O ' , ' A U T H O R I T Y ' ) ) , 
+     r e c i p i e n t _ i d   U U I D , 
+     c h a n n e l   T E X T   D E F A U L T   ' M O C K _ S M S ' , 
+     s t a t u s   T E X T   D E F A U L T   ' S E N T ' , 
+     d e l i v e r y _ m o d e   T E X T   D E F A U L T   ' M O C K ' , 
+     e x t e r n a l _ r e f e r e n c e   T E X T , 
+     c r e a t e d _ a t   T I M E S T A M P T Z   D E F A U L T   n o w ( ) , 
+     s e n t _ a t   T I M E S T A M P T Z   D E F A U L T   n o w ( ) , 
+     f a i l u r e _ r e a s o n   T E X T 
+ ) ; 
+  
+ 

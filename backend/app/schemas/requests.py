@@ -42,3 +42,14 @@ class WishlistActionRequest(BaseModel):
 
 class ToggleWishlistRequest(BaseModel):
     product_id: str
+
+
+class ResponderStatusUpdateRequest(BaseModel):
+    status: str
+    action: Optional[str] = None
+
+class ResponderSignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str
