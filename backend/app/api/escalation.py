@@ -42,7 +42,7 @@ async def escalate_assessment(local_assessment_id: str, user_id: str = Depends(g
         user_lat = user_res.data[0].get("latitude")
         user_lon = user_res.data[0].get("longitude")
     
-    has_location = user_lat is not None and user_lon is not None
+    has_location = user_lat is not None and user_lon is not None and not (user_lat == 0 and user_lon == 0)
 
     # 4. Rank Support Services
     services_res = supabase.table("support_services").select("*").eq("is_active", True).eq("is_verified", True).execute()
@@ -57,6 +57,13 @@ async def escalate_assessment(local_assessment_id: str, user_id: str = Depends(g
             if coverage is not None and dist > coverage:
                 continue
         ranked_services.append((s, dist))
+
+    # Fallback: if strict radius filtering excluded ALL services, ignore radius so we at least assign someone.
+    if has_location and not ranked_services:
+        for s in services:
+            if s.get("latitude") is not None and s.get("longitude") is not None:
+                dist = haversine_distance(user_lat, user_lon, s["latitude"], s["longitude"])
+                ranked_services.append((s, dist))
 
     if has_location:
         ranked_services.sort(key=lambda x: (x[1] if x[1] is not None else float('inf'), x[0].get('priority', 100)))

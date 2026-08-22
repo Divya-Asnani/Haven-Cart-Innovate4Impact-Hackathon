@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import Dict, Optional
 from datetime import datetime
 from uuid import UUID
@@ -11,6 +11,8 @@ class SafetyAssessmentAnswersSchema(BaseModel):
     contact_requested: bool
 
 class CreateSafetyAssessmentRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     local_assessment_id: UUID
     session_id: Optional[UUID] = None
     answers: SafetyAssessmentAnswersSchema
