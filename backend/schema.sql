@@ -134,3 +134,164 @@ INSERT INTO products (name, brand, category_id, price, mrp, discount_percent, im
 ('Set of 4 Cushion Covers', 'Home Centre', '44444444-4444-4444-4444-444444444444', 499, 799, 37, 'https://picsum.photos/seed/p29/400/500', ARRAY['16x16'], 'Embroidered cushion covers.'),
 ('Sunscreen Lotion SPF 50', 'Neutrogena', '55555555-5555-5555-5555-555555555555', 549, 699, 21, 'https://picsum.photos/seed/p30/400/500', ARRAY['88ml'], 'Ultra sheer dry touch sunscreen.')
 ON CONFLICT DO NOTHING;
+-- safety_assessments
+CREATE TABLE safety_assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
+  model_version TEXT NOT NULL,
+  model_type TEXT NOT NULL DEFAULT 'logistic_regression',
+  risk_score NUMERIC(6,5) NOT NULL CHECK (risk_score >= 0 AND risk_score <= 1),
+  ml_risk_level TEXT NOT NULL CHECK (ml_risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  final_risk_level TEXT NOT NULL CHECK (final_risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  decision_source TEXT NOT NULL CHECK (decision_source IN ('ML', 'RULE_OVERRIDE')),
+  override_reason TEXT,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (decision_source = 'ML' AND override_reason IS NULL) OR
+    (decision_source = 'RULE_OVERRIDE' AND override_reason IS NOT NULL)
+  ),
+  CHECK (completed_at >= started_at)
+);
+
+CREATE INDEX idx_safety_assessments_user_id ON safety_assessments(user_id);
+CREATE INDEX idx_safety_assessments_session_id ON safety_assessments(session_id);
+CREATE INDEX idx_safety_assessments_created_at ON safety_assessments(created_at);
+CREATE INDEX idx_safety_assessments_final_risk ON safety_assessments(final_risk_level);
+
+-- safety_assessment_answers
+CREATE TABLE safety_assessment_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assessment_id UUID NOT NULL REFERENCES safety_assessments(id) ON DELETE CASCADE,
+  question_key TEXT NOT NULL CHECK (question_key IN ('safe_now', 'perpetrator_present', 'can_leave_safely', 'medical_help', 'contact_requested')),
+  answer_value BOOLEAN NOT NULL,
+  answered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (assessment_id, question_key)
+);
+
+CREATE INDEX idx_safety_assessment_answers_assessment_id ON safety_assessment_answers(assessment_id);
+
+-- safety_cases
+CREATE TABLE safety_cases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  assessment_id UUID UNIQUE REFERENCES safety_assessments(id) ON DELETE SET NULL,
+  case_status TEXT NOT NULL DEFAULT 'OPEN' CHECK (case_status IN ('OPEN', 'ESCALATED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')),
+  risk_level TEXT NOT NULL CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  latitude NUMERIC(10,7),
+  longitude NUMERIC(10,7),
+  location_accuracy_m NUMERIC(10,2) CHECK (location_accuracy_m >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  closed_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_safety_cases_user_id ON safety_cases(user_id);
+CREATE INDEX idx_safety_cases_assessment_id ON safety_cases(assessment_id);
+CREATE INDEX idx_safety_cases_case_status ON safety_cases(case_status);
+CREATE INDEX idx_safety_cases_created_at ON safety_cases(created_at);
+
+-- Apply RLS
+ALTER TABLE safety_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE safety_assessment_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE safety_cases ENABLE ROW LEVEL SECURITY;
+-- RPC for atomic safety assessment insertion
+CREATE OR REPLACE FUNCTION insert_safety_assessment(
+  p_assessment_id UUID,
+  p_user_id UUID,
+  p_session_id UUID,
+  p_answers JSONB,
+  p_ml_risk_level TEXT,
+  p_ml_confidence NUMERIC,
+  p_final_risk_level TEXT,
+  p_decision_source TEXT,
+  p_override_reason TEXT,
+  p_model_version TEXT,
+  p_started_at TIMESTAMPTZ,
+  p_completed_at TIMESTAMPTZ
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_existing_assessment UUID;
+  v_existing_case UUID;
+  v_new_case_id UUID := NULL;
+  v_case_created BOOLEAN := FALSE;
+  v_question_key TEXT;
+  v_answer_value BOOLEAN;
+  v_valid_keys TEXT[] := ARRAY['safe_now', 'perpetrator_present', 'can_leave_safely', 'medical_help', 'contact_requested'];
+BEGIN
+  -- 1. Idempotency Check
+  SELECT id INTO v_existing_assessment FROM safety_assessments WHERE id = p_assessment_id;
+  IF FOUND THEN
+    SELECT id INTO v_existing_case FROM safety_cases WHERE assessment_id = p_assessment_id;
+    RETURN jsonb_build_object(
+      'status', 'success',
+      'assessment_id', v_existing_assessment,
+      'case_created', (v_existing_case IS NOT NULL),
+      'case_id', v_existing_case
+    );
+  END IF;
+
+  -- 2. Validate Inputs
+  IF p_ml_confidence < 0 OR p_ml_confidence > 1 THEN
+    RAISE EXCEPTION 'Confidence must be between 0 and 1';
+  END IF;
+
+  IF p_ml_risk_level NOT IN ('LOW', 'MEDIUM', 'HIGH') OR p_final_risk_level NOT IN ('LOW', 'MEDIUM', 'HIGH') THEN
+    RAISE EXCEPTION 'Invalid risk level';
+  END IF;
+
+  IF p_decision_source NOT IN ('ML', 'RULE_OVERRIDE') THEN
+    RAISE EXCEPTION 'Invalid decision source';
+  END IF;
+
+  -- Verify all 5 keys exist in JSONB
+  FOREACH v_question_key IN ARRAY v_valid_keys
+  LOOP
+    IF NOT (p_answers ? v_question_key) THEN
+      RAISE EXCEPTION 'Missing required answer key: %', v_question_key;
+    END IF;
+  END LOOP;
+
+  -- 3. Insert Assessment
+  INSERT INTO safety_assessments (
+    id, user_id, session_id, model_version, risk_score,
+    ml_risk_level, final_risk_level, decision_source, override_reason,
+    started_at, completed_at
+  ) VALUES (
+    p_assessment_id, p_user_id, p_session_id, p_model_version, p_ml_confidence,
+    p_ml_risk_level, p_final_risk_level, p_decision_source, p_override_reason,
+    p_started_at, p_completed_at
+  );
+
+  -- 4. Insert Answers
+  FOR v_question_key, v_answer_value IN
+    SELECT key, value::boolean FROM jsonb_each_text(p_answers)
+  LOOP
+    IF v_question_key = ANY(v_valid_keys) THEN
+      INSERT INTO safety_assessment_answers (assessment_id, question_key, answer_value)
+      VALUES (p_assessment_id, v_question_key, v_answer_value);
+    ELSE
+      RAISE EXCEPTION 'Invalid question key: %', v_question_key;
+    END IF;
+  END LOOP;
+
+  -- 5. Insert Case if HIGH
+  IF p_final_risk_level = 'HIGH' THEN
+    INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level)
+    VALUES (p_user_id, p_assessment_id, 'OPEN', 'HIGH')
+    RETURNING id INTO v_new_case_id;
+    v_case_created := TRUE;
+  END IF;
+
+  -- 6. Return Success
+  RETURN jsonb_build_object(
+    'status', 'success',
+    'assessment_id', p_assessment_id,
+    'case_created', v_case_created,
+    'case_id', v_new_case_id
+  );
+END;
+$$ LANGUAGE plpgsql;

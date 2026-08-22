@@ -1,0 +1,33 @@
+{
+  "model": "risk_model_float.json",
+  "optional_quantized_model": "risk_model_int8.json",
+  "features": [
+    "safe_now",
+    "perpetrator_present",
+    "can_leave_safely",
+    "medical_help",
+    "contact_requested"
+  ],
+  "classes": [
+    "HIGH",
+    "LOW",
+    "MEDIUM"
+  ],
+  "offline_inference": true,
+  "network_required_for_inference": false,
+  "rule_engine": "local",
+  "input_type": "binary",
+  "input_order": [
+    "safe_now",
+    "perpetrator_present",
+    "can_leave_safely",
+    "medical_help",
+    "contact_requested"
+  ],
+  "architecture": [
+    "five-question safety interview",
+    "local logistic regression",
+    "deterministic safety-rule override",
+    "LOW/MEDIUM/HIGH output"
+  ]
+}

@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState, useRef, ReactNode, useEffec
 import { Product, CartItem } from '../types/navigation';
 import { INACTIVITY_TIMEOUT_MS } from '../constants/theme';
 import { api, getAccessToken, clearTokens, isAuthError } from '../api';
+import { AppState } from 'react-native';
+import type { AppStateStatus } from 'react-native';
+import { syncOfflineAssessments } from '../storage/assessmentQueue';
+import { syncOfflineEvidence } from '../storage/evidenceQueue';
 
 interface UserProfile {
   id: string;
@@ -10,6 +14,15 @@ interface UserProfile {
   phone?: string;
   address?: string;
   city?: string;
+}
+
+export interface CurrentRiskAssessment {
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  mlConfidence: number;
+  decisionSource: "ML" | "RULE_OVERRIDE";
+  overrideReason: string | null;
+  modelVersion: string;
+  assessedAt: string;
 }
 
 interface AppContextType {
@@ -35,6 +48,9 @@ interface AppContextType {
   checkCovertTrigger: (query: string) => Promise<boolean>;
   logout: () => Promise<void>;
   retryInit: () => void;
+  currentRiskAssessment: CurrentRiskAssessment | null;
+  setCurrentRiskAssessment: (assessment: CurrentRiskAssessment | null) => void;
+  clearSafetyState: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -54,6 +70,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [initAttempt, setInitAttempt] = useState(0);
+  const [currentRiskAssessment, setCurrentRiskAssessment] = useState<CurrentRiskAssessment | null>(null);
+
+  const clearSafetyState = () => {
+    setCurrentRiskAssessment(null);
+  };
 
   // Initialize App — retry on failure (Render free tier may need a cold-start)
   useEffect(() => {
@@ -98,7 +119,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     initApp();
-    return () => { cancelled = true; };
+    
+    const subscription = AppState.addEventListener('change', (nextAppState: any) => {
+      if (nextAppState === 'active') {
+        syncOfflineAssessments();
+        syncOfflineEvidence().catch(e => console.error(e));
+      }
+    });
+
+    return () => { 
+      cancelled = true; 
+      subscription.remove();
+    };
   }, [initAttempt]);
 
   const retryInit = () => setInitAttempt(n => n + 1);
@@ -124,6 +156,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const profile = await api.getProfile();
       setUserProfile(profile);
       await fetchCartAndWishlist();
+      syncOfflineAssessments();
+      syncOfflineEvidence().catch(e => console.error(e));
     } catch (err) {
       if (isAuthError(err)) {
         await clearAuthState();
@@ -329,7 +363,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         checkAuthStatus,
         checkCovertTrigger,
         logout,
-        retryInit
+        retryInit,
+        currentRiskAssessment,
+        setCurrentRiskAssessment,
+        clearSafetyState
       }}
     >
       {children}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ViewProps } from 'react-native';
 import { Heart, Star } from 'lucide-react-native';
 import { Product } from '../types/navigation';
 import { COLORS } from '../constants/theme';
@@ -10,7 +10,7 @@ const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
 interface ProductCardProps {
   product: Product;
   onPress: (product: Product) => void;
-  style?: StyleProp<ViewStyle>;
+  style?: any;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, style }) => {

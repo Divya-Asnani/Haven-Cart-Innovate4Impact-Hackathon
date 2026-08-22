@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from postgrest.exceptions import APIError
 from app.schemas.requests import SignupRequest, LoginRequest, VerifyPinRequest, RefreshTokenRequest
 from app.database.supabase_client import supabase
+import os
+from supabase import create_client
 from app.security.hashing import get_pin_hash, verify_pin
 from app.security.jwt import create_access_token, create_refresh_token, decode_token
 from app.api.auth_deps import get_current_user_id
@@ -112,17 +114,31 @@ async def signup(req: SignupRequest):
 @router.post("/login")
 async def login(req: LoginRequest):
     try:
-        response = supabase.table("profiles").select("*").eq("email", req.email).execute()
+        # Authenticate via Supabase Auth using a temp client to avoid corrupting global state
+        temp_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+        auth_response = temp_client.auth.sign_in_with_password({
+            "email": req.email,
+            "password": req.password
+        })
+        user_id = str(auth_response.user.id)
+        email = auth_response.user.email
 
-        if not response.data:
-            raise HTTPException(status_code=401, detail="Incorrect email or password")
-
-        user = response.data[0]
-
-        if not verify_pin(req.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Incorrect email or password")
-
-        user_id = str(user["id"])
+        # Try to fetch full_name from profiles, and create the profile if missing (so FKs don't fail)
+        full_name = ""
+        try:
+            profile_res = supabase.table("profiles").select("full_name").eq("id", user_id).execute()
+            if profile_res.data:
+                full_name = profile_res.data[0].get("full_name") or ""
+            else:
+                supabase.table("profiles").insert({
+                    "id": user_id,
+                    "email": email or req.email,
+                    "password_hash": "supabase-auth",
+                    "security_pin_hash": "supabase-auth",
+                    "full_name": ""
+                }).execute()
+        except Exception:
+            pass
 
         try:
             supabase.table("sessions").insert({"user_id": user_id}).execute()
@@ -131,22 +147,11 @@ async def login(req: LoginRequest):
 
         return _build_auth_response(
             user_id=user_id,
-            full_name=user.get("full_name") or "",
-            email=user.get("email") or req.email,
+            full_name=full_name,
+            email=email or req.email,
         )
     except Exception as exc:
-        if not _is_missing_profiles_table_error(exc):
-            raise
-
-        user = _fallback_users_by_email.get(req.email)
-        if not user or not verify_pin(req.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Incorrect email or password")
-
-        return _build_auth_response(
-            user_id=user["id"],
-            full_name=user.get("full_name") or "",
-            email=user.get("email") or req.email,
-        )
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
 
 @router.post("/verify-pin")
 async def verify_device_pin(req: VerifyPinRequest, user_id: str = Depends(get_current_user_id)):

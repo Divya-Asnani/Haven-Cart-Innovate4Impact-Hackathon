@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './storage/secureStoreWrapper';
 import { Product } from './types/navigation';
 
 const normalizeBaseUrl = (url: string) => url.trim().replace(/\/+$/, '');
@@ -94,6 +94,25 @@ export const clearTokens = async () => {
   await SecureStore.deleteItemAsync('refresh_token');
 };
 
+// ── Responder Token Management ──────────────────────────────────────────
+export const getResponderAccessToken = async (): Promise<string | null> => {
+  return await SecureStore.getItemAsync('responder_access_token');
+};
+
+export const getResponderRefreshToken = async (): Promise<string | null> => {
+  return await SecureStore.getItemAsync('responder_refresh_token');
+};
+
+export const setResponderTokens = async (accessToken: string, refreshToken: string) => {
+  await SecureStore.setItemAsync('responder_access_token', accessToken);
+  await SecureStore.setItemAsync('responder_refresh_token', refreshToken);
+};
+
+export const clearResponderTokens = async () => {
+  await SecureStore.deleteItemAsync('responder_access_token');
+  await SecureStore.deleteItemAsync('responder_refresh_token');
+};
+
 // ── Response handler ────────────────────────────────────────────────────
 const handleResponse = async (res: Response) => {
   if (!res.ok) {
@@ -143,7 +162,7 @@ const tryRefreshAccessToken = async (): Promise<string | null> => {
   return refreshInFlight;
 };
 
-const authFetch = async (
+export const authFetch = async (
   url: string,
   init: RequestInit = {},
   tokenOverride?: string,
@@ -167,6 +186,48 @@ const authFetch = async (
     if (newToken) {
       res = await makeRequest(newToken);
     }
+  }
+
+  return res;
+};
+
+export const responderAuthFetch = async (
+  url: string,
+  init: RequestInit = {},
+): Promise<Response> => {
+  const makeRequest = async (token: string | null) => {
+    const baseHeaders = (init.headers as Record<string, string> | undefined) ?? {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...baseHeaders,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    return fetchWithTimeout(url, { ...init, headers });
+  };
+
+  const token = await getResponderAccessToken();
+  let res = await makeRequest(token);
+
+  // We could implement refresh logic for responder here if needed, 
+  // but for hackathon, a simple token retry or failure is acceptable.
+  if (res.status === 401) {
+    try {
+      const storedRefresh = await getResponderRefreshToken();
+      if (storedRefresh) {
+        const refreshRes = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: storedRefresh }),
+        });
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          if (data.access_token) {
+            await SecureStore.setItemAsync('responder_access_token', data.access_token);
+            res = await makeRequest(data.access_token);
+          }
+        }
+      }
+    } catch {}
   }
 
   return res;
@@ -322,6 +383,65 @@ export const api = {
     const res = await authFetch(`${API_BASE_URL}/wishlist`, {
       method: 'POST',
       body: JSON.stringify({ product_id: productId }),
+    });
+    return handleResponse(res);
+  },
+
+  // Trusted Contacts
+  getTrustedContacts: async () => {
+    const res = await authFetch(`${API_BASE_URL}/safety/trusted-contacts`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  createTrustedContact: async (data: any) => {
+    const res = await authFetch(`${API_BASE_URL}/safety/trusted-contacts`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  updateTrustedContact: async (id: string, data: any) => {
+    const res = await authFetch(`${API_BASE_URL}/safety/trusted-contacts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  // Support Services
+  getSupportServices: async () => {
+    const res = await authFetch(`${API_BASE_URL}/safety/support-services`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  // Escalation
+  escalateAssessment: async (localAssessmentId: string) => {
+    const res = await authFetch(`${API_BASE_URL}/safety/assessments/${localAssessmentId}/escalate`, {
+      method: 'POST',
+    });
+    return handleResponse(res);
+  },
+
+  // NGO Portal
+  getNGOCases: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  getNGOCaseEvidence: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases/${caseId}/evidence`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  recordCaseView: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases/${caseId}/view`, { method: 'POST' });
+    return handleResponse(res);
+  },
+
+  updateNGOAssignment: async (assignmentId: string, status: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/assignments/${assignmentId}?status=${status}`, {
+      method: 'PATCH',
     });
     return handleResponse(res);
   },

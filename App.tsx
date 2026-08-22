@@ -7,9 +7,24 @@ import { AppInitGate } from './src/components/AppInitGate';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { LanguageProvider } from './src/i18n/LanguageContext';
 
+import * as Linking from 'expo-linking';
+
+const prefix = Linking.createURL('/');
+
+const linking = {
+  prefixes: [prefix, 'havencart://'],
+  config: {
+    screens: {
+      ResponderLogin: 'responder/login',
+      ResponderDashboard: 'responder/dashboard',
+    },
+  },
+};
+
 export default function App() {
   return (
     <SafeAreaProvider>
+<<<<<<< HEAD
       <LanguageProvider>
         <AppProvider>
           <AppInitGate>
@@ -20,6 +35,16 @@ export default function App() {
           </AppInitGate>
         </AppProvider>
       </LanguageProvider>
+=======
+      <AppProvider>
+        <AppInitGate>
+          <NavigationContainer linking={linking}>
+            <StatusBar style="dark" backgroundColor="#FFFFFF" />
+            <RootNavigator />
+          </NavigationContainer>
+        </AppInitGate>
+      </AppProvider>
+>>>>>>> d7968ed9d8bdb9ae5f4e68c55ed4645d3035b837
     </SafeAreaProvider>
   );
 }
