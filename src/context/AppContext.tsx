@@ -5,6 +5,7 @@ import { api, getAccessToken, clearTokens, isAuthError } from '../api';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import { syncOfflineAssessments } from '../storage/assessmentQueue';
+import { syncOfflineEvidence } from '../storage/evidenceQueue';
 
 interface UserProfile {
   id: string;
@@ -122,6 +123,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const subscription = AppState.addEventListener('change', (nextAppState: any) => {
       if (nextAppState === 'active') {
         syncOfflineAssessments();
+        syncOfflineEvidence().catch(e => console.error(e));
       }
     });
 
@@ -155,6 +157,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUserProfile(profile);
       await fetchCartAndWishlist();
       syncOfflineAssessments();
+      syncOfflineEvidence().catch(e => console.error(e));
     } catch (err) {
       if (isAuthError(err)) {
         await clearAuthState();

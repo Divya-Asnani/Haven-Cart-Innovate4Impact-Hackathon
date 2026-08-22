@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
-import { saveEncryptedEvidence, readEncryptedEvidence, EVIDENCE_DIR } from './evidenceCrypto';
-import * as FileSystem from 'expo-file-system';
+import { saveEncryptedEvidence, readEncryptedEvidence, deleteEvidenceFile, evidenceFileExists, readEvidenceFileAsBase64 } from './evidenceCrypto';
 
 const QUEUE_STORAGE_KEY = 'havencart_evidence_queue';
 
@@ -111,15 +110,15 @@ export const deleteEvidence = async (evidenceId: string) => {
   
   if (item) {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(item.file_path);
-      if (fileInfo.exists) {
-        await FileSystem.deleteAsync(item.file_path);
+      const exists = await evidenceFileExists(item.file_path);
+      if (exists) {
+        await deleteEvidenceFile(item.file_path);
       }
       
       const pekPath = item.file_path.replace('.enc', '.pek.enc');
-      const pekInfo = await FileSystem.getInfoAsync(pekPath);
-      if (pekInfo.exists) {
-        await FileSystem.deleteAsync(pekPath);
+      const pekExists = await evidenceFileExists(pekPath);
+      if (pekExists) {
+        await deleteEvidenceFile(pekPath);
       }
     } catch (err) {
       console.error('[EvidenceQueue] Failed to delete file', err);
@@ -160,7 +159,7 @@ export const syncOfflineEvidence = async () => {
       await updateEvidenceStatus(item.evidence_id, 'SYNCING');
 
       // Read encrypted file as base64 to send to backend
-      const encryptedBase64 = await FileSystem.readAsStringAsync(item.file_path, { encoding: 'base64' });
+      const encryptedBase64 = await readEvidenceFileAsBase64(item.file_path);
 
       // The backend expects the IV and Tag inside the upload payload since they are not in PostgreSQL
       // We will create a JSON envelope containing the IV, Tag, and Ciphertext, and encode IT as Base64 to upload as the file payload.

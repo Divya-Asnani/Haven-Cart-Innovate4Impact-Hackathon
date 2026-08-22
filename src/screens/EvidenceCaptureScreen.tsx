@@ -7,7 +7,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
-  BackHandler
+  BackHandler,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Mic, Type, Check, X, Square } from 'lucide-react-native';
@@ -15,8 +16,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
-import { enqueueEvidence, EvidenceType } from '../storage/evidenceQueue';
+import { enqueueEvidence, EvidenceType, syncOfflineEvidence } from '../storage/evidenceQueue';
 import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 
 const CameraComponent: any = CameraView;
 
@@ -79,25 +81,41 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
     try {
       let payloadBase64 = '';
       
+      const readAsBase64 = async (uri: string) => {
+        if (uri.startsWith('data:')) {
+          return uri.split(',')[1];
+        }
+        if (Platform.OS === 'web') {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+        return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+      };
+
       if (activeTab === 'TEXT') {
         payloadBase64 = textContent; // Text stored directly
       } else if (activeTab === 'PHOTO') {
-        // Read photo as base64
-        payloadBase64 = await FileSystem.readAsStringAsync(capturedPhoto as string, { encoding: 'base64' });
-        // Clean up temp file
-        await FileSystem.deleteAsync(capturedPhoto as string, { idempotent: true });
+        payloadBase64 = await readAsBase64(capturedPhoto as string);
+        if (Platform.OS !== 'web') await FileSystem.deleteAsync(capturedPhoto as string, { idempotent: true });
       } else if (activeTab === 'AUDIO') {
-        // Read audio as base64
-        payloadBase64 = await FileSystem.readAsStringAsync(audioUri as string, { encoding: 'base64' });
-        await FileSystem.deleteAsync(audioUri as string, { idempotent: true });
+        payloadBase64 = await readAsBase64(audioUri as string);
+        if (Platform.OS !== 'web') await FileSystem.deleteAsync(audioUri as string, { idempotent: true });
       }
 
       // Link to safety case if a HIGH risk assessment is currently in context
       const localAssessmentId = currentRiskAssessment?.riskLevel === 'HIGH' ? currentRiskAssessment.assessedAt : null; 
-      // Note: assessedAt is used here as a placeholder for the local_assessment_id because CurrentRiskAssessment in AppContext lacks the ID. 
-      // To properly link, we should store local_assessment_id in AppContext.
 
       await enqueueEvidence(activeTab, payloadBase64, localAssessmentId);
+      
+      // Trigger background sync
+      syncOfflineEvidence().catch(e => console.error('[EvidenceCapture] Background sync error:', e));
+      
       navigation.goBack();
       
     } catch (err) {
@@ -115,6 +133,23 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
       if (photo) setCapturedPhoto(photo.uri);
     } catch (e) {
       Alert.alert('Camera Error', 'Could not capture photo.');
+    }
+  };
+
+  const pickImage = async () => {
+    triggerTouchActivity();
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setCapturedPhoto(result.assets[0].uri);
+      }
+    } catch (e) {
+      Alert.alert('Gallery Error', 'Could not select photo.');
     }
   };
 
@@ -227,10 +262,13 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
                   <TouchableOpacity onPress={requestCameraPermission} style={{ backgroundColor: COLORS.primary, padding: 12, borderRadius: 8 }}>
                     <Text style={{ color: '#FFF', fontWeight: '700' }}>Grant Camera Access</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity onPress={pickImage} style={{ backgroundColor: COLORS.surface, padding: 12, borderRadius: 8, marginTop: 12 }}>
+                    <Text style={{ color: COLORS.text, fontWeight: '700' }}>Upload from Device</Text>
+                  </TouchableOpacity>
                 </View>
               ) : capturedPhoto ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700', marginBottom: 20 }}>Photo Captured</Text>
+                  <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700', marginBottom: 20 }}>Photo Ready</Text>
                   <View style={{ flexDirection: 'row', gap: 20 }}>
                     <TouchableOpacity onPress={() => setCapturedPhoto(null)} style={{ backgroundColor: '#4B5563', padding: 16, borderRadius: 30 }}>
                       <X size={24} color="#FFF" />
@@ -243,8 +281,11 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
               ) : (
                 <CameraComponent style={{ flex: 1 }} facing="back" ref={cameraRef}>
                   <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end', padding: 32, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={takePhoto} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                    <TouchableOpacity onPress={takePhoto} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' }} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={pickImage} style={{ backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
+                      <Text style={{ color: '#FFF', fontWeight: '700' }}>Upload from Device</Text>
                     </TouchableOpacity>
                   </View>
                 </CameraComponent>

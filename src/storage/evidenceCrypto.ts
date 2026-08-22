@@ -1,5 +1,7 @@
 import * as SecureStore from './secureStoreWrapper';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import forge from 'node-forge';
 import 'react-native-get-random-values'; // Polyfill crypto.getRandomValues if needed
 
@@ -7,15 +9,62 @@ const VAULT_KEY_STORAGE = 'havencart_vault_key';
 const LAST_HASH_STORAGE = 'havencart_last_evidence_hash';
 
 // Directories for evidence storage
-export const EVIDENCE_DIR = `${(FileSystem as any).documentDirectory}evidence/`;
+export const EVIDENCE_DIR = Platform.OS === 'web' ? 'evidence_web/' : `${(FileSystem as any).documentDirectory}evidence/`;
 
 /**
  * Ensures the evidence directory exists on the file system.
  */
 export const initEvidenceDir = async () => {
+  if (Platform.OS === 'web') return;
   const dirInfo = await FileSystem.getInfoAsync(EVIDENCE_DIR);
   if (!dirInfo.exists) {
     await FileSystem.makeDirectoryAsync(EVIDENCE_DIR, { intermediates: true });
+  }
+};
+
+export const writeEvidenceFile = async (path: string, content: string) => {
+  if (Platform.OS === 'web') {
+    await AsyncStorage.setItem(path, content);
+  } else {
+    await FileSystem.writeAsStringAsync(path, content, { encoding: 'utf8' });
+  }
+};
+
+export const readEvidenceFile = async (path: string): Promise<string> => {
+  if (Platform.OS === 'web') {
+    return (await AsyncStorage.getItem(path)) || '';
+  } else {
+    return await FileSystem.readAsStringAsync(path, { encoding: 'utf8' });
+  }
+};
+
+export const readEvidenceFileAsBase64 = async (path: string): Promise<string> => {
+  if (Platform.OS === 'web') {
+    const data = (await AsyncStorage.getItem(path)) || '';
+    // btoa is available in web browsers
+    return btoa(data);
+  } else {
+    return await FileSystem.readAsStringAsync(path, { encoding: 'base64' });
+  }
+};
+
+export const deleteEvidenceFile = async (path: string) => {
+  if (Platform.OS === 'web') {
+    await AsyncStorage.removeItem(path);
+  } else {
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) {
+      await FileSystem.deleteAsync(path, { idempotent: true });
+    }
+  }
+};
+
+export const evidenceFileExists = async (path: string): Promise<boolean> => {
+  if (Platform.OS === 'web') {
+    return (await AsyncStorage.getItem(path)) !== null;
+  } else {
+    const info = await FileSystem.getInfoAsync(path);
+    return info.exists;
   }
 };
 
@@ -149,14 +198,14 @@ export const saveEncryptedEvidence = async (evidenceId: string, base64Payload: s
   
   try {
     // Write wrapped PEK first
-    await FileSystem.writeAsStringAsync(pekPath, JSON.stringify(wrappedPEK), { encoding: 'utf8' });
+    await writeEvidenceFile(pekPath, JSON.stringify(wrappedPEK));
     // Write encrypted payload
-    await FileSystem.writeAsStringAsync(filePath, encryptedHex, { encoding: 'utf8' });
+    await writeEvidenceFile(filePath, encryptedHex);
   } catch (err) {
     // Failure safety: do not leave partial evidence
     try {
-      await FileSystem.deleteAsync(pekPath, { idempotent: true });
-      await FileSystem.deleteAsync(filePath, { idempotent: true });
+      await deleteEvidenceFile(pekPath);
+      await deleteEvidenceFile(filePath);
     } catch (cleanupErr) {
       console.error('Failed to cleanup partial evidence files', cleanupErr);
     }
@@ -177,17 +226,17 @@ export const saveEncryptedEvidence = async (evidenceId: string, base64Payload: s
  * Reads and decrypts evidence from FileSystem.
  */
 export const readEncryptedEvidence = async (filePath: string, ivHex: string, tagHex: string): Promise<string> => {
-  const encryptedHex = await FileSystem.readAsStringAsync(filePath, { encoding: 'utf8' });
+  const encryptedHex = await readEvidenceFile(filePath);
   
   // Determine if this is NEW (envelope) or LEGACY evidence
   const pekPath = filePath.replace('.enc', '.pek.enc');
-  const pekInfo = await FileSystem.getInfoAsync(pekPath);
+  const pekExists = await evidenceFileExists(pekPath);
   
   let pekHex: string | undefined = undefined;
   
-  if (pekInfo.exists) {
+  if (pekExists) {
     // Recover PEK using Master Vault Key
-    const pekDataStr = await FileSystem.readAsStringAsync(pekPath, { encoding: 'utf8' });
+    const pekDataStr = await readEvidenceFile(pekPath);
     const wrappedPEK = JSON.parse(pekDataStr);
     pekHex = await decryptPayload(wrappedPEK.encryptedHex, wrappedPEK.ivHex, wrappedPEK.tagHex);
   }
@@ -202,10 +251,10 @@ export const readEncryptedEvidence = async (filePath: string, ivHex: string, tag
  */
 export const recoverPEK = async (evidenceId: string): Promise<string | null> => {
   const pekPath = `${EVIDENCE_DIR}${evidenceId}.pek.enc`;
-  const pekInfo = await FileSystem.getInfoAsync(pekPath);
-  if (!pekInfo.exists) return null;
+  const exists = await evidenceFileExists(pekPath);
+  if (!exists) return null;
   
-  const pekDataStr = await FileSystem.readAsStringAsync(pekPath, { encoding: 'utf8' });
+  const pekDataStr = await readEvidenceFile(pekPath);
   const wrappedPEK = JSON.parse(pekDataStr);
   return await decryptPayload(wrappedPEK.encryptedHex, wrappedPEK.ivHex, wrappedPEK.tagHex);
 };
