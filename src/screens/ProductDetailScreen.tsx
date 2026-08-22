@@ -12,9 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ArrowLeft, Heart, ShoppingBag, Star } from 'lucide-react-native';
-
 import { RootStackParamList } from '../types/navigation';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { COLORS } from '../constants/theme';
 
 const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
@@ -24,6 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { product } = route.params;
   const { wishlist, toggleWishlist, addToCart } = useApp();
+  const { t } = useLanguage();
   const [selectedSize, setSelectedSize] = useState<string>(
     product.sizes ? product.sizes[0] : 'M'
   );
@@ -34,12 +35,12 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await addToCart(product, selectedSize);
       if (Platform.OS === 'android') {
-        ToastAndroid.show('Item added to Bag!', ToastAndroid.SHORT);
+        ToastAndroid.show(t('item_added'), ToastAndroid.SHORT);
       } else {
-        Alert.alert('Success', 'Item added to Bag!');
+        Alert.alert('Success', t('item_added'));
       }
     } catch (err: any) {
-      const message = err?.message || 'Could not add item to bag. Please try again.';
+      const message = err?.message || t('could_not_add');
       if (Platform.OS === 'android') {
         ToastAndroid.show(message, ToastAndroid.LONG);
       } else {
@@ -122,14 +123,14 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               ₹{product.price}
             </Text>
             <Text style={{ fontSize: 14, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
-              MRP ₹{product.mrp}
+              {t('mrp')} ₹{product.mrp}
             </Text>
             <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.primary }}>
               ({product.discount})
             </Text>
           </View>
           <Text style={{ fontSize: 10, color: COLORS.success, fontWeight: '700', marginTop: 2 }}>
-            inclusive of all taxes
+            {t('inclusive_of_taxes')}
           </Text>
         </View>
 
@@ -145,7 +146,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 marginBottom: 10,
               }}
             >
-              Select Size
+              {t('select_size')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
               {product.sizes.map((sz) => {
@@ -192,7 +193,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               marginBottom: 8,
             }}
           >
-            Product Details & Description
+            {t('product_details')}
           </Text>
           <Text style={{ fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 }}>
 
@@ -209,7 +210,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Fabric</Text>
+                <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{t('fabric')}</Text>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text, marginTop: 2 }}>
                   {product.fabric}
                 </Text>
@@ -224,7 +225,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Care Instructions</Text>
+                <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{t('care_instructions')}</Text>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text, marginTop: 2 }}>
                   {product.care}
                 </Text>
@@ -265,7 +266,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             fill={isWishlisted ? COLORS.primary : 'none'}
           />
           <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text }}>
-            WISHLIST
+            {t('wishlist').toUpperCase()}
           </Text>
         </TouchableOpacity>
 
@@ -285,7 +286,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         >
           <ShoppingBag size={18} color="#FFF" />
           <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFF' }}>
-            ADD TO BAG
+            {t('add_to_bag').toUpperCase()}
           </Text>
         </TouchableOpacity>
       </View>

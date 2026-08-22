@@ -6,9 +6,11 @@ import * as Location from 'expo-location';
 import { MapPin, ArrowLeft } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { api } from '../api';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const LocationSettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useLanguage();
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +23,7 @@ export const LocationSettingsScreen: React.FC = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Permission to access location was denied');
+        setError(t('permission_denied'));
         setIsLoading(false);
         return;
       }
@@ -48,7 +50,7 @@ export const LocationSettingsScreen: React.FC = () => {
         longitude: location.coords.longitude
       });
       
-      setSuccess('Location updated successfully!');
+      setSuccess(t('location_updated'));
     } catch (err: any) {
       // setError('Could not fetch location. Please enter manually.');
     } finally {
@@ -58,7 +60,7 @@ export const LocationSettingsScreen: React.FC = () => {
 
   const saveManualLocation = async () => {
     if (!address || !city) {
-      setError('Please fill in both address and city');
+      setError(t('fill_address_city'));
       return;
     }
     setIsLoading(true);
@@ -70,10 +72,10 @@ export const LocationSettingsScreen: React.FC = () => {
         latitude: 0, // Manual entry fallback
         longitude: 0
       });
-      setSuccess('Location updated successfully!');
+      setSuccess(t('location_updated'));
       setTimeout(() => navigation.goBack(), 1500);
     } catch (err) {
-      setError('Failed to update location');
+      setError(t('failed_to_update_location'));
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +87,7 @@ export const LocationSettingsScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4, marginRight: 12 }}>
           <ArrowLeft size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.text }}>Location Settings</Text>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.text }}>{t('location_settings_title')}</Text>
       </View>
 
       <View style={{ padding: 24, gap: 20 }}>
@@ -98,24 +100,24 @@ export const LocationSettingsScreen: React.FC = () => {
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border }}
         >
           {isLoading ? <ActivityIndicator color={COLORS.primary} /> : <MapPin size={20} color={COLORS.primary} />}
-          <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Use Current Location</Text>
+          <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>{t('use_current_location')}</Text>
         </TouchableOpacity>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
-          <Text style={{ marginHorizontal: 16, color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase' }}>Or enter manually</Text>
+          <Text style={{ marginHorizontal: 16, color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase' }}>{t('or_enter_manually')}</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
         </View>
 
         <TextInput
-          placeholder="Street Address"
+          placeholder={t('street_address')}
           value={address}
           onChangeText={setAddress}
           style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
         />
         
         <TextInput
-          placeholder="City"
+          placeholder={t('city_placeholder')}
           value={city}
           onChangeText={setCity}
           style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
@@ -126,7 +128,7 @@ export const LocationSettingsScreen: React.FC = () => {
           disabled={isLoading}
           style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 }}
         >
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Save Address</Text>
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('save_address')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -8,10 +8,12 @@ import { BannerCarousel } from '../components/BannerCarousel';
 import { ProductCard } from '../components/ProductCard';
 import { RootStackParamList, Product } from '../types/navigation';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { COLORS, TRIGGER_PRODUCT_NAME } from '../constants/theme';
 import { Truck, RotateCcw, ShieldCheck } from 'lucide-react-native';
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { t } = useLanguage();
 
   const { products, refreshProducts } = useApp();
   const [activeCategory, setActiveCategory] = useState('all');
@@ -58,7 +60,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onPressBanner={() =>
             navigation.navigate('CategoryListing', {
               categoryId: 'all',
-              categoryName: 'Festive Deals',
+              categoryName: t('festive_deals'),
             })
           }
         />
@@ -78,19 +80,19 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Truck size={16} color={COLORS.primary} />
             <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.text }}>
-              Free Delivery
+              {t('free_delivery')}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <RotateCcw size={16} color={COLORS.primary} />
             <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.text }}>
-              14-Day Returns
+              {t('fourteen_day_returns')}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <ShieldCheck size={16} color={COLORS.primary} />
             <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.text }}>
-              100% Genuine
+              {t('genuine_products')}
             </Text>
           </View>
         </View>
@@ -107,18 +109,18 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text, textTransform: 'uppercase' }}>
-            Trending Fashion Collection
+            {t('trending_fashion')}
           </Text>
           <Text
             onPress={() =>
               navigation.navigate('CategoryListing', {
                 categoryId: 'all',
-                categoryName: 'All Products',
+                categoryName: t('all_products'),
               })
             }
             style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}
           >
-            VIEW ALL
+            {t('view_all')}
           </Text>
         </View>
 
@@ -135,7 +137,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {filteredProducts.length === 0 ? (
             <View style={{ width: '100%', alignItems: 'center', paddingVertical: 40, gap: 12 }}>
               <Text style={{ fontSize: 14, color: COLORS.textMuted, textAlign: 'center' }}>
-                No products to show right now.
+                {t('no_products')}
               </Text>
               <TouchableOpacity
                 onPress={async () => {
@@ -155,7 +157,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {isRefreshing ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ color: '#fff', fontWeight: '700' }}>Refresh</Text>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>{t('refresh')}</Text>
                 )}
               </TouchableOpacity>
             </View>

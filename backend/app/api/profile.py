@@ -15,7 +15,7 @@ async def get_my_profile(user_id: str = Depends(get_current_user_id)):
     return response.data[0]
 
 @router.put("/location")
-async def update_location(req: LocationUpdateRequest, user_id: str = Depends(get_current_user_id)):
+async def update_location(req: LocationUpdateRequest, user_id: str = Depends(get_current_user_id)):nn
     update_data = {
         "address": req.address,
         "city": req.city,

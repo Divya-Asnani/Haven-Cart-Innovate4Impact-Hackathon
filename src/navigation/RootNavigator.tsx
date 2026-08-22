@@ -6,6 +6,7 @@ import { Home, Grid, Heart, ShoppingBag, User } from 'lucide-react-native';
 import { RootStackParamList, MainTabParamList } from '../types/navigation';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
@@ -27,6 +28,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabNavigator() {
   const { cart, wishlist } = useApp();
+  const { t } = useLanguage();
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -53,6 +55,7 @@ function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
+          tabBarLabel: t('home'),
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
@@ -61,7 +64,7 @@ function MainTabNavigator() {
         component={CategoryScreen}
         initialParams={{ categoryId: 'all', categoryName: 'Categories' }}
         options={{
-          tabBarLabel: 'Categories',
+          tabBarLabel: t('categories'),
           tabBarIcon: ({ color, size }) => <Grid size={size} color={color} />,
         }}
       />
@@ -70,6 +73,7 @@ function MainTabNavigator() {
         component={CategoryScreen}
         initialParams={{ categoryId: 'wishlist', categoryName: 'My Wishlist' }}
         options={{
+          tabBarLabel: t('wishlist'),
           tabBarBadge: wishlist.length > 0 ? wishlist.length : undefined,
           tabBarBadgeStyle: { backgroundColor: COLORS.primary, fontSize: 10 },
           tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
@@ -79,6 +83,7 @@ function MainTabNavigator() {
         name="Bag"
         component={CartScreen}
         options={{
+          tabBarLabel: t('bag'),
           tabBarBadge: cartCount > 0 ? cartCount : undefined,
           tabBarBadgeStyle: { backgroundColor: COLORS.primary, fontSize: 10 },
           tabBarIcon: ({ color, size }) => <ShoppingBag size={size} color={color} />,
@@ -88,6 +93,7 @@ function MainTabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
+          tabBarLabel: t('profile'),
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />

@@ -11,6 +11,7 @@ import { Search as SearchIcon, ArrowLeft, X, Clock, TrendingUp } from 'lucide-re
 import { Product } from '../types/navigation';
 import { ProductCard } from '../components/ProductCard';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { COLORS } from '../constants/theme';
 
 const TRENDING_SEARCHES = [
@@ -24,6 +25,7 @@ const TRENDING_SEARCHES = [
 
 export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navigation }) => {
   const { products, recentSearches, addRecentSearch, checkCovertTrigger } = useApp();
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
 
   const handleProductPress = (product: Product) => {
@@ -97,7 +99,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
           <SearchIcon size={16} color={COLORS.textMuted} />
           <TextInput
             autoFocus
-            placeholder="Search products, brands or try 'Cotton Kurta'..."
+            placeholder={t('search_placeholder')}
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={() => handleSearchSubmit(query)}
@@ -134,7 +136,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
                       textTransform: 'uppercase',
                     }}
                   >
-                    Recent Searches
+                    {t('recent_searches')}
                   </Text>
                   <Clock size={14} color={COLORS.textMuted} />
                 </View>
@@ -176,7 +178,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
                     textTransform: 'uppercase',
                   }}
                 >
-                  Trending Searches
+                  {t('trending_searches')}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -211,7 +213,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
                 marginBottom: 12,
               }}
             >
-              Found {searchResults.length} matching products for "{query}"
+              {t('found')}{searchResults.length}{t('matching_products_for')}"{query}"
             </Text>
 
             {searchResults.length > 0 ? (
@@ -241,7 +243,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
                     marginTop: 12,
                   }}
                 >
-                  No matching products found
+                  {t('no_results')}
                 </Text>
                 <Text
                   style={{
@@ -251,7 +253,7 @@ export const SearchScreen: React.FC<{ route?: any; navigation: any }> = ({ navig
                     marginTop: 4,
                   }}
                 >
-                  Try checking spelling or use general keywords like 'Kurta' or 'Shoes'
+                  {t('search_help_text')}
                 </Text>
               </View>
             )}

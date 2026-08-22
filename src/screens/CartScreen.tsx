@@ -11,12 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, Trash2, Plus, Minus, Tag, CheckCircle2 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { COLORS } from '../constants/theme';
 
 const FALLBACK_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Image';
 
 export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useApp();
+  const { t } = useLanguage();
   const [orderSuccessModal, setOrderSuccessModal] = useState(false);
 
   const totalMRP = cart.reduce((acc, item) => acc + item.mrp * item.quantity, 0);
@@ -43,7 +45,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         }}
       >
         <Text style={{ fontSize: 16, fontWeight: '900', color: COLORS.text }}>
-          SHOPPING BAG ({cart.length})
+          {t('shopping_bag')} ({cart.length})
         </Text>
       </View>
 
@@ -84,7 +86,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       {item.name}
                     </Text>
                     <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
-                      Size: <Text style={{ fontWeight: '700', color: COLORS.text }}>{item.selectedSize}</Text>
+                      {t('size')} <Text style={{ fontWeight: '700', color: COLORS.text }}>{item.selectedSize}</Text>
                     </Text>
                   </View>
 
@@ -142,11 +144,11 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Tag size={18} color={COLORS.primary} />
               <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>
-                Apply Promo Coupon
+                {t('apply_promo_coupon')}
               </Text>
             </View>
             <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
-              APPLY
+              {t('apply')}
             </Text>
           </View>
 
@@ -173,19 +175,19 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 paddingBottom: 8,
               }}
             >
-              Price Details ({cart.length} Items)
+              {t('price_details')} ({cart.length} {t('items')})
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>Total MRP</Text>
+              <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>{t('total_mrp')}</Text>
               <Text style={{ fontSize: 12, color: COLORS.text }}>₹{totalMRP}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: COLORS.success }}>Discount on MRP</Text>
+              <Text style={{ fontSize: 12, color: COLORS.success }}>{t('discount_on_mrp')}</Text>
               <Text style={{ fontSize: 12, color: COLORS.success }}>-₹{totalDiscount}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>Convenience Fee</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.success }}>FREE</Text>
+              <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>{t('convenience_fee')}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.success }}>{t('free')}</Text>
             </View>
             <View
               style={{
@@ -197,7 +199,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 marginTop: 4,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>Total Amount</Text>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>{t('total_amount')}</Text>
               <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>₹{finalAmount}</Text>
             </View>
           </View>
@@ -206,10 +208,10 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <ShoppingBag size={64} color={COLORS.textMuted} />
           <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.text, marginTop: 12 }}>
-            Your Shopping Bag is Empty
+            {t('empty_bag')}
           </Text>
           <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' }}>
-            Explore our fashion collections and add items to your bag.
+            {t('explore_collections')}
           </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('Home')}
@@ -222,7 +224,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }}
           >
             <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>
-              START SHOPPING
+              {t('start_shopping')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -242,7 +244,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           }}
         >
           <View>
-            <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Total Payable</Text>
+            <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{t('total_payable')}</Text>
             <Text style={{ fontSize: 16, fontWeight: '900', color: COLORS.text }}>
               ₹{finalAmount}
             </Text>
@@ -258,7 +260,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }}
           >
             <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>
-              PLACE ORDER
+              {t('place_order')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -287,10 +289,10 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           >
             <CheckCircle2 size={48} color={COLORS.success} />
             <Text style={{ fontSize: 18, fontWeight: '900', color: COLORS.text, marginTop: 12 }}>
-              Order Placed!
+              {t('order_placed')}
             </Text>
             <Text style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginTop: 6 }}>
-              Thank you for shopping with HavenCart. Your order confirmation has been logged.
+              {t('order_logged')}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -308,7 +310,7 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               }}
             >
               <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>
-                CONTINUE SHOPPING
+                {t('continue_shopping')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -317,3 +319,8 @@ export const CartScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
+
+
+
+

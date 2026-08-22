@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Button } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut } from 'lucide-react-native';
-
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useLanguage, LanguageCode } from '../i18n/LanguageContext';
 
 const ORDERS_HISTORY = [
   {
@@ -25,6 +25,7 @@ const ORDERS_HISTORY = [
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { isLoggedIn, logout, userProfile } = useApp();
+  const { t, language, setLanguage } = useLanguage();
 
   const displayName = userProfile?.full_name || 'HavenCart User';
   const displayEmail = userProfile?.email || '';
@@ -33,21 +34,21 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   if (!isLoggedIn) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 12 }}>Not Logged In</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 12 }}>{t('not_logged_in')}</Text>
         <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>
-          Please login or create an account to view your profile and orders.
+          {t('please_login')}
         </Text>
         <TouchableOpacity 
           onPress={() => navigation.navigate('Login')}
           style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', marginBottom: 12 }}
         >
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Login</Text>
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('login')}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => navigation.navigate('Signup')}
           style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.primary }}
         >
-          <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>Create Account</Text>
+          <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>{t('create_account')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -83,7 +84,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           <View>
             <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{displayName}</Text>
             <Text style={{ fontSize: 12, color: '#F472B6', fontWeight: '700' }}>
-              HavenCart Insider Member
+              {t('insider_member')}
             </Text>
             <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
               {displayEmail}
@@ -105,7 +106,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
             <Package size={16} color={COLORS.primary} />
             <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text, textTransform: 'uppercase' }}>
-              Recent Order History
+              {t('recent_order_history')}
             </Text>
           </View>
 
@@ -122,7 +123,9 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text }}>{ord.id}</Text>
                   <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.success }}>{ord.status}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.success }}>
+                      {ord.status === 'Delivered' ? t('delivered') : ord.status}
+                    </Text>
                   </View>
                 </View>
                 <Text numberOfLines={1} style={{ fontSize: 11, color: COLORS.textSecondary, marginTop: 4 }}>
@@ -134,6 +137,47 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                 </View>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* Language Selector */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text, marginBottom: 8, paddingHorizontal: 4 }}>
+            {t('language')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => setLanguage('en')}
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 8,
+                backgroundColor: language === 'en' ? COLORS.primary : COLORS.surface,
+                borderWidth: 1,
+                borderColor: language === 'en' ? COLORS.primary : COLORS.border,
+              }}
+            >
+              <Text style={{ fontWeight: '700', color: language === 'en' ? '#FFF' : COLORS.text }}>
+                English
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setLanguage('hi')}
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 8,
+                backgroundColor: language === 'hi' ? COLORS.primary : COLORS.surface,
+                borderWidth: 1,
+                borderColor: language === 'hi' ? COLORS.primary : COLORS.border,
+              }}
+            >
+              <Text style={{ fontWeight: '700', color: language === 'hi' ? '#FFF' : COLORS.text }}>
+                हिंदी
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -161,7 +205,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <MapPin size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
-                Location Settings
+                {t('location_settings')}
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />
@@ -181,7 +225,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <CreditCard size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
-                Saved Payment Methods
+                {t('saved_payment_methods')}
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />
@@ -201,7 +245,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <HelpCircle size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
-                Customer Help & Support
+                {t('customer_help_support')}
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />
@@ -221,7 +265,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <LogOut size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
-                Logout
+                {t('logout')}
               </Text>
             </View>
           </TouchableOpacity>

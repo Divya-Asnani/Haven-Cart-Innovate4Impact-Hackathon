@@ -159,10 +159,12 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { api, setTokens } from '../api';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const SignupScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { checkAuthStatus } = useApp();
+  const { t } = useLanguage();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -176,19 +178,19 @@ export const SignupScreen: React.FC = () => {
 
   const handleSignup = async () => {
     if (!fullName || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError(t('fill_in_all_fields'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('passwords_dont_match'));
       return;
     }
     if (!pin || pin.length !== 4) {
-      setError('Delivery PIN must be exactly 4 digits');
+      setError(t('pin_length_error'));
       return;
     }
     if (pin !== confirmPin) {
-      setError('Delivery PIN do not match');
+      setError(t('pin_match_error'));
       return;
     }
     setError('');
@@ -222,23 +224,23 @@ export const SignupScreen: React.FC = () => {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 24, justifyContent: 'center', flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <Text style={{ fontSize: 28, fontWeight: '800', color: COLORS.text, marginBottom: 8 }}>
-            Create Account
+            {t('create_account')}
           </Text>
           <Text style={{ fontSize: 14, color: COLORS.textSecondary, marginBottom: 32 }}>
-            Join HavenCart for the best fashion deals
+            {t('join_havencart')}
           </Text>
 
           {error ? <Text style={{ color: 'red', marginBottom: 16 }}>{error}</Text> : null}
 
           <View style={{ gap: 16 }}>
             <TextInput
-              placeholder="Full Name"
+              placeholder={t('full_name')}
               value={fullName}
               onChangeText={setFullName}
               style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
             />
             <TextInput
-              placeholder="Email Address"
+              placeholder={t('email_address')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -246,35 +248,34 @@ export const SignupScreen: React.FC = () => {
               style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
             />
             <TextInput
-              placeholder="Password"
+              placeholder={t('password')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
             />
             <TextInput
-              placeholder="Confirm Password"
+              placeholder={t('confirm_password')}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
               style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
             />
 
-            {/* PIN fields — presented as "Delivery ZIP" to look completely ordinary and hide the safety feature */}
             <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 16, marginTop: 4 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>
-                  Primary Delivery ZIP (4 digits)
+                  {t('primary_zip')}
                 </Text>
                 <TouchableOpacity onPress={() => setPinVisible((v) => !v)}>
                   <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
-                    {pinVisible ? 'Hide' : 'Show'}
+                    {pinVisible ? t('hide') : t('show')}
                   </Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TextInput
-                  placeholder="ZIP Code"
+                  placeholder={t('zip_code')}
                   value={pin}
                   onChangeText={setPin}
                   keyboardType="numeric"
@@ -283,7 +284,7 @@ export const SignupScreen: React.FC = () => {
                   style={{ flex: 1, backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16, textAlign: 'center', letterSpacing: 8 }}
                 />
                 <TextInput
-                  placeholder="Confirm ZIP"
+                  placeholder={t('confirm_zip')}
                   value={confirmPin}
                   onChangeText={setConfirmPin}
                   keyboardType="numeric"
@@ -299,13 +300,13 @@ export const SignupScreen: React.FC = () => {
               disabled={isLoading}
               style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, opacity: isLoading ? 0.7 : 1 }}
             >
-              {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Create Account</Text>}
+              {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('create_account')}</Text>}
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
-              <Text style={{ color: COLORS.textSecondary }}>Already have an account? </Text>
+              <Text style={{ color: COLORS.textSecondary }}>{t('already_have_account')} </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Login</Text>
+                <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>{t('login')}</Text>
               </TouchableOpacity>
             </View>
           </View>

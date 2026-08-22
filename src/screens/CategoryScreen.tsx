@@ -5,9 +5,11 @@ import { ArrowLeft, SlidersHorizontal, ArrowUpDown } from 'lucide-react-native';
 import { Product } from '../types/navigation';
 import { ProductCard } from '../components/ProductCard';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { COLORS, TRIGGER_PRODUCT_NAME } from '../constants/theme';
 
 export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ route, navigation }) => {
+  const { t } = useLanguage();
   const { categoryId, categoryName } = (route && route.params) || { categoryId: 'all', categoryName: 'Products' };
   const { products, wishlist } = useApp();
 
@@ -45,7 +47,7 @@ export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ rou
             {categoryName}
           </Text>
           <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
-            {filteredProducts.length} items available
+            {filteredProducts.length}{t('items_available')}
           </Text>
         </View>
       </View>
@@ -73,7 +75,7 @@ export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ rou
         >
           <ArrowUpDown size={14} color={COLORS.textSecondary} />
           <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textSecondary }}>
-            SORT BY
+            {t('sort_by')}
           </Text>
         </TouchableOpacity>
 
@@ -89,7 +91,7 @@ export const CategoryScreen: React.FC<{ route?: any; navigation: any }> = ({ rou
         >
           <SlidersHorizontal size={14} color={COLORS.textSecondary} />
           <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textSecondary }}>
-            FILTER
+            {t('filter')}
           </Text>
         </TouchableOpacity>
       </View>

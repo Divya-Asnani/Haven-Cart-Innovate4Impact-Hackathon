@@ -11,9 +11,11 @@ import { MapPin, HelpCircle, FileText, ChevronRight, ArrowLeft } from 'lucide-re
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 import { getAccessToken, clearTokens, api } from '../api';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> = ({ navigation }) => {
   const { registerInactivityReset, triggerTouchActivity } = useApp();
+  const { t } = useLanguage();
 
   // Register 60-second touch inactivity timer to automatically return to Home
   useEffect(() => {
@@ -84,7 +86,7 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
             <ArrowLeft size={22} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.text }}>
-            Account Preferences
+            {t('account_preferences')}
           </Text>
           <View
             style={{
@@ -103,10 +105,10 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 18, fontWeight: '900', color: COLORS.text }}>
-              Verified Member Overview
+              {t('verified_member_overview')}
             </Text>
             <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 4 }}>
-              Manage your verified shopping preferences & account records.
+              {t('verified_member_desc')}
             </Text>
           </View>
 
@@ -139,10 +141,10 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
                 </View>
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>
-                    Saved Addresses
+                    {t('saved_addresses_title')}
                   </Text>
                   <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                    Manage delivery locations & profiles
+                    {t('saved_addresses_desc')}
                   </Text>
                 </View>
               </View>
@@ -176,10 +178,10 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
                 </View>
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>
-                    Order Support
+                    {t('order_support')}
                   </Text>
                   <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                    Customer support tickets & queries
+                    {t('order_support_desc')}
                   </Text>
                 </View>
               </View>
@@ -213,10 +215,10 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
                 </View>
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>
-                    Account Activity
+                    {t('account_activity')}
                   </Text>
                   <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                    Review security logs & session history
+                    {t('account_activity_desc')}
                   </Text>
                 </View>
               </View>
@@ -226,7 +228,7 @@ export const AccountActivityScreen: React.FC<{ route?: any; navigation: any }> =
 
           <View style={{ marginTop: 40, alignItems: 'center' }}>
             <Text style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: '600' }}>
-              HavenCart Mobile Build 2.4.1 (Android)
+              {t('build_version')}
             </Text>
           </View>
         </ScrollView>

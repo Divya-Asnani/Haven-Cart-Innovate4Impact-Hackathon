@@ -21,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const TRUSTED_CONTACTS = [
   { name: 'National DV Hotline', phone: '1-800-799-7233', type: 'hotline' },
@@ -30,6 +31,7 @@ const TRUSTED_CONTACTS = [
 
 export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { registerInactivityReset, triggerTouchActivity } = useApp();
+  const { t } = useLanguage();
 
   // Register inactivity timer — silently returns to decoy Home on timeout
   useEffect(() => {
@@ -78,7 +80,7 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
             <ArrowLeft size={22} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.text }}>
-            Safety Dashboard
+            {t('safety_dashboard')}
           </Text>
           <View
             style={{
@@ -98,10 +100,10 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
           {/* Welcome */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ fontSize: 20, fontWeight: '900', color: COLORS.text }}>
-              You are safe here
+              {t('you_are_safe')}
             </Text>
             <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 4, lineHeight: 20 }}>
-              This dashboard is hidden from your browsing history. Press the back arrow or wait 90 seconds to silently return to the shopping app.
+              {t('safety_desc')}
             </Text>
           </View>
 
@@ -127,7 +129,7 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
           >
             <AlertTriangle size={22} color="#FFF" />
             <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '900' }}>
-              CALL EMERGENCY (112)
+              {t('call_emergency')}
             </Text>
           </TouchableOpacity>
 
@@ -143,7 +145,7 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
                   textTransform: 'uppercase',
                 }}
               >
-                Trusted Helplines
+                {t('trusted_helplines')}
               </Text>
             </View>
 
@@ -231,10 +233,10 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>
-                Share My Location
+                {t('share_my_location')}
               </Text>
               <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                Send your current location to a trusted contact
+                {t('send_location_desc')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -249,14 +251,13 @@ export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
             }}
           >
             <Text style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 18, textAlign: 'center' }}>
-              💡 Tap the back arrow at any time to instantly return to the shopping app.
-              This screen auto-closes after 90 seconds of inactivity.
+              {t('quick_exit_note')}
             </Text>
           </View>
 
           <View style={{ marginTop: 40, alignItems: 'center' }}>
             <Text style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: '600' }}>
-              HavenCart Safety Module v1.0
+              {t('safety_module_version')}
             </Text>
           </View>
         </ScrollView>

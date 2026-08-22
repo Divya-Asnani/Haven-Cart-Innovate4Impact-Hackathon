@@ -5,10 +5,12 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { api, setTokens } from '../api';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { checkAuthStatus } = useApp();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +19,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError(t('fill_in_all_fields'));
       return;
     }
     setError('');
@@ -43,17 +45,17 @@ export const LoginScreen: React.FC = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
         <Text style={{ fontSize: 28, fontWeight: '800', color: COLORS.text, marginBottom: 8 }}>
-          Welcome Back
+          {t('welcome_back')}
         </Text>
         <Text style={{ fontSize: 14, color: COLORS.textSecondary, marginBottom: 32 }}>
-          Login to your HavenCart account
+          {t('login_to_account')}
         </Text>
 
         {error ? <Text style={{ color: 'red', marginBottom: 16 }}>{error}</Text> : null}
 
         <View style={{ gap: 16 }}>
           <TextInput
-            placeholder="Email Address"
+            placeholder={t('email_address')}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -61,7 +63,7 @@ export const LoginScreen: React.FC = () => {
             style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
           />
           <TextInput
-            placeholder="Password"
+            placeholder={t('password')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -69,7 +71,7 @@ export const LoginScreen: React.FC = () => {
           />
 
           <TouchableOpacity style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: COLORS.textSecondary }}>Forgot password?</Text>
+            <Text style={{ color: COLORS.textSecondary }}>{t('forgot_password')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -77,13 +79,13 @@ export const LoginScreen: React.FC = () => {
             disabled={isLoading}
             style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, opacity: isLoading ? 0.7 : 1 }}
           >
-            {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Login</Text>}
+            {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('login')}</Text>}
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
-            <Text style={{ color: COLORS.textSecondary }}>Don't have an account? </Text>
+            <Text style={{ color: COLORS.textSecondary }}>{t('dont_have_account')} </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Sign Up</Text>
+              <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>{t('signup')}</Text>
             </TouchableOpacity>
           </View>
         </View>
