@@ -48,7 +48,7 @@ export const translations = {
     no_results: "No results found",
     incorrect_pin: "Incorrect PIN, try again",
     something_went_wrong: "Something went wrong",
-    
+
     // Additional keys found across screens
     not_logged_in: "Not Logged In",
     please_login: "Please login or create an account to view your profile and orders.",
@@ -59,7 +59,7 @@ export const translations = {
     customer_help_support: "Customer Help & Support",
     insider_member: "HavenCart Insider Member",
     my_wishlist: "My Wishlist",
-    
+
     // Cart/Checkout
     cart_total: "Cart Total",
     subtotal: "Subtotal",
@@ -68,19 +68,19 @@ export const translations = {
     free: "FREE",
     total_amount: "Total Amount",
     continue_shopping: "Continue Shopping",
-    
+
     // Safety
     confirm_location: "Confirm Location",
     emergency_contact: "Emergency Contact",
     call_now: "Call Now",
-    
+
     // Product Detail
     details: "Details",
     reviews: "Reviews",
     similar_products: "Similar Products",
     select_size: "Select Size",
     size_guide: "Size Guide",
-    
+
     // Auth
     already_have_account: "Already have an account?",
     dont_have_account: "Don't have an account?",
@@ -100,16 +100,16 @@ export const translations = {
     hide: "Hide",
     zip_code: "ZIP Code",
     confirm_zip: "Confirm ZIP",
-    
+
     // Safety PIN
     enter_pin: "Enter your safety PIN",
     pin_description: "Please enter your 4-digit PIN to access this section securely.",
     verify: "Verify",
-    
+
     // Location
     current_location: "Current Location",
     save_location: "Save Location",
-    
+
     // Search
     recent_searches: "Recent Searches",
     clear_all: "Clear All",
@@ -118,12 +118,12 @@ export const translations = {
     found: "Found ",
     matching_products_for: " matching products for ",
     search_help_text: "Try checking spelling or use general keywords like 'Kurta' or 'Shoes'",
-    
+
     // Category
     items_available: " items available",
     sort_by: "SORT BY",
     filter: "FILTER",
-    
+
     // Cart
     shopping_bag: "SHOPPING BAG",
     size: "Size:",
@@ -140,7 +140,7 @@ export const translations = {
     place_order: "PLACE ORDER",
     order_placed: "Order Placed!",
     order_logged: "Thank you for shopping with HavenCart. Your order confirmation has been logged.",
-    
+
     // Product Detail
     item_added: "Item added to Bag!",
     could_not_add: "Could not add item to bag. Please try again.",
@@ -148,7 +148,7 @@ export const translations = {
     product_details: "Product Details & Description",
     fabric: "Fabric",
     care_instructions: "Care Instructions",
-    
+
     // Home
     free_delivery: "Free Delivery",
     fourteen_day_returns: "14-Day Returns",
@@ -164,7 +164,7 @@ export const translations = {
     safety_dashboard: "Safety Dashboard",
     you_are_safe: "You are safe here",
     safety_desc: "This dashboard is hidden from your browsing history. Press the back arrow or wait 90 seconds to silently return to the shopping app.",
-    call_emergency: "CALL EMERGENCY (112)",
+    call_emergency: "CALL EMERGENCY (1091)",
     trusted_helplines: "Trusted Helplines",
     share_my_location: "Share My Location",
     send_location_desc: "Send your current location to a trusted contact",
@@ -255,7 +255,7 @@ export const translations = {
     customer_help_support: "ग्राहक सहायता और समर्थन",
     insider_member: "हेवनकार्ट इनसाइडर सदस्य",
     my_wishlist: "मेरा पसंदीदा",
-    
+
     // Cart/Checkout
     cart_total: "कार्ट का कुल योग",
     subtotal: "उप-कुल",
@@ -264,19 +264,19 @@ export const translations = {
     free: "मुफ़्त",
     total_amount: "कुल राशि",
     continue_shopping: "खरीदारी जारी रखें",
-    
+
     // Safety
     confirm_location: "स्थान की पुष्टि करें",
     emergency_contact: "आपातकालीन संपर्क",
     call_now: "अभी कॉल करें",
-    
+
     // Product Detail
     details: "विवरण",
     reviews: "समीक्षाएं",
     similar_products: "समान उत्पाद",
     select_size: "आकार चुनें",
     size_guide: "आकार गाइड",
-    
+
     // Auth
     already_have_account: "क्या आपके पास पहले से एक खाता है?",
     dont_have_account: "क्या आपके पास खाता नहीं है?",
@@ -296,16 +296,16 @@ export const translations = {
     hide: "छिपाएँ",
     zip_code: "ज़िप कोड",
     confirm_zip: "ज़िप की पुष्टि करें",
-    
+
     // Safety PIN
     enter_pin: "अपना सुरक्षा पिन दर्ज करें",
     pin_description: "इस अनुभाग को सुरक्षित रूप से एक्सेस करने के लिए कृपया अपना 4-अंकीय पिन दर्ज करें।",
     verify: "सत्यापित करें",
-    
+
     // Location
     current_location: "वर्तमान स्थान",
     save_location: "स्थान सहेजें",
-    
+
     // Search
     recent_searches: "हाल की खोजें",
     clear_all: "सभी साफ़ करें",
@@ -314,12 +314,12 @@ export const translations = {
     found: "खोजे गए ",
     matching_products_for: " के लिए मेल खाने वाले उत्पाद",
     search_help_text: "वर्तनी की जाँच करने का प्रयास करें या 'कुर्ता' या 'जूते' जैसे सामान्य खोजशब्दों का उपयोग करें",
-    
+
     // Category
     items_available: " आइटम उपलब्ध हैं",
     sort_by: "क्रमबद्ध करें",
     filter: "फ़िल्टर",
-    
+
     // Cart
     shopping_bag: "शॉपिंग बैग",
     size: "आकार:",
@@ -336,7 +336,7 @@ export const translations = {
     place_order: "ऑर्डर दें",
     order_placed: "ऑर्डर दे दिया गया!",
     order_logged: "हेवनकार्ट के साथ खरीदारी करने के लिए धन्यवाद। आपके ऑर्डर की पुष्टि लॉग कर दी गई है।",
-    
+
     // Product Detail
     item_added: "बैग में आइटम जोड़ा गया!",
     could_not_add: "बैग में आइटम नहीं जोड़ा जा सका। कृपया पुनः प्रयास करें।",
@@ -344,7 +344,7 @@ export const translations = {
     product_details: "उत्पाद विवरण और वर्णन",
     fabric: "कपड़ा",
     care_instructions: "देखभाल के निर्देश",
-    
+
     // Home
     free_delivery: "मुफ़्त डिलीवरी",
     fourteen_day_returns: "14-दिन की वापसी",

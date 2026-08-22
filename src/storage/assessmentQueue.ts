@@ -15,7 +15,7 @@ export interface PersistedAssessment {
   local_assessment_id: string;
   user_id?: string;
   session_id?: string;
-  
+
   // Inputs
   safe_now: boolean;
   perpetrator_present: boolean;
@@ -26,17 +26,17 @@ export interface PersistedAssessment {
   // ML Outputs
   ml_risk_level: string;
   ml_confidence: number;
-  
+
   // Final Results
   final_risk_level: string;
   decision_source: string;
   override_reason: string | null;
   model_version: string;
-  
+
   // Timestamps
   started_at: string;
   completed_at: string;
-  
+
   sync_status: SyncStatus;
 }
 
@@ -65,7 +65,7 @@ export const enqueueAssessment = async (
   startedAt: string
 ): Promise<PersistedAssessment> => {
   const queue = await getAssessmentQueue();
-  
+
   // Check auth to attach user_id if safely available. (We do not fetch full profile here, just existence)
   // For now, without a DB or full session state easily accessible synchronously, we'll leave session_id undefined
   // unless we decode the JWT token.
@@ -74,24 +74,24 @@ export const enqueueAssessment = async (
   const newAssessment: PersistedAssessment = {
     local_assessment_id: uuid.v4() as string,
     user_id: hasToken ? 'authenticated_user' : undefined, // Placeholder until JWT decode / profile integration
-    
+
     safe_now: inputs.safe_now,
     perpetrator_present: inputs.perpetrator_present,
     can_leave_safely: inputs.can_leave_safely,
     medical_help: inputs.medical_help,
     contact_requested: inputs.contact_requested,
-    
+
     ml_risk_level: mlResult.mlRiskLevel,
     ml_confidence: mlResult.confidence,
-    
+
     final_risk_level: finalResult.finalRiskLevel,
     decision_source: finalResult.decisionSource,
     override_reason: finalResult.overrideReason,
     model_version: finalResult.modelVersion,
-    
+
     started_at: startedAt,
     completed_at: new Date().toISOString(),
-    
+
     sync_status: 'PENDING'
   };
 
@@ -104,7 +104,7 @@ export const enqueueAssessment = async (
   }
 
   await SecureStore.setItemAsync(QUEUE_STORAGE_KEY, JSON.stringify(queue));
-  
+
   return newAssessment;
 };
 
@@ -113,12 +113,12 @@ export const enqueueAssessment = async (
  */
 export const markAssessmentSynced = async (localAssessmentId: string) => {
   const queue = await getAssessmentQueue();
-  const updated = queue.map(a => 
-    a.local_assessment_id === localAssessmentId 
-      ? { ...a, sync_status: 'SYNCED' as SyncStatus } 
+  const updated = queue.map(a =>
+    a.local_assessment_id === localAssessmentId
+      ? { ...a, sync_status: 'SYNCED' as SyncStatus }
       : a
   );
-  
+
   // In a robust implementation, we might remove SYNCED items to save space
   const pendingOnly = updated.filter(a => a.sync_status !== 'SYNCED');
   await SecureStore.setItemAsync(QUEUE_STORAGE_KEY, JSON.stringify(pendingOnly));
@@ -129,9 +129,9 @@ export const markAssessmentSynced = async (localAssessmentId: string) => {
  */
 export const markAssessmentFailed = async (localAssessmentId: string) => {
   const queue = await getAssessmentQueue();
-  const updated = queue.map(a => 
-    a.local_assessment_id === localAssessmentId 
-      ? { ...a, sync_status: 'FAILED' as SyncStatus } 
+  const updated = queue.map(a =>
+    a.local_assessment_id === localAssessmentId
+      ? { ...a, sync_status: 'FAILED' as SyncStatus }
       : a
   );
   await SecureStore.setItemAsync(QUEUE_STORAGE_KEY, JSON.stringify(updated));
@@ -143,16 +143,16 @@ export const markAssessmentFailed = async (localAssessmentId: string) => {
 export const syncOfflineAssessments = async () => {
   const queue = await getAssessmentQueue();
   const pending = queue.filter(a => a.sync_status === 'PENDING' || a.sync_status === 'FAILED');
-  
+
   if (pending.length === 0) return;
-  
+
   console.log(`[AssessmentQueue] SYNC START`);
   console.log(`[AssessmentQueue] number of pending assessments: ${pending.length}`);
-  
+
   // Import dynamically to avoid circular dependencies if any
   const { authFetch, API_BASE_URL, getAccessToken, api } = await import('../api');
 
-  
+
   const token = await getAccessToken();
   if (!token) {
     return;
@@ -180,16 +180,17 @@ export const syncOfflineAssessments = async () => {
         completed_at: assessment.completed_at
       };
 
-      console.log(`[AssessmentQueue] API request: POST ${API_BASE_URL}/safety/assessments for assessment ID: ${assessment.local_assessment_id}`);
+      console.log('[AssessmentQueue] POST /safety/assessments payload:', payload);
 
       const res = await authFetch(`${API_BASE_URL}/safety/assessments`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      
+
       console.log(`[AssessmentQueue] HTTP response status: ${res.status}`);
 
       if (res.ok) {
+        console.log('[AssessmentQueue] POST /safety/assessments response:', await res.clone().json().catch(() => null));
         await markAssessmentSynced(assessment.local_assessment_id);
         console.log(`[AssessmentQueue] SYNC SUCCESS for ${assessment.local_assessment_id}`);
 

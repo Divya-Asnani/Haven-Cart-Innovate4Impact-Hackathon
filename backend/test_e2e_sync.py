@@ -19,9 +19,9 @@ client = TestClient(app)
 # Let's see how `get_current_user_id` works.
 # Actually, the user instructed: "Do not modify ML, rule engine, database schema, or RPC."
 # Let's patch `get_current_user_id` for the test if it's too hard to get a real token.
-from app.api import auth_deps
-auth_deps.get_current_user_id = lambda: "00000000-0000-0000-0000-000000000000"
-app.dependency_overrides[auth_deps.get_current_user_id] = lambda: "00000000-0000-0000-0000-000000000000"
+from app.api.auth_deps import get_current_user_id
+app.dependency_overrides[get_current_user_id] = lambda: "c334567b-adfd-4d5e-b76b-a7e214b295c5"
+
 
 def get_row_counts(assessment_id, is_high=False):
     assessments = supabase.table('safety_assessments').select('*').eq('id', assessment_id).execute()
@@ -76,7 +76,7 @@ def run_tests():
         "completed_at": datetime.now(timezone.utc).isoformat()
     }
     
-    resp_a = client.post("/api/v1/safety/assessments", json=low_payload)
+    resp_a = client.post("/api/v1/safety/assessments", json=low_payload, headers={"Authorization": "Bearer dummy_token"})
     counts_a = get_row_counts(low_id)
     print_test_result("Test A: Online LOW assessment", resp_a.status_code, resp_a.json(), counts_a)
 
@@ -88,12 +88,12 @@ def run_tests():
     high_payload["final_risk_level"] = "HIGH"
     high_payload["answers"]["safe_now"] = False
     
-    resp_b = client.post("/api/v1/safety/assessments", json=high_payload)
+    resp_b = client.post("/api/v1/safety/assessments", json=high_payload, headers={"Authorization": "Bearer dummy_token"})
     counts_b = get_row_counts(high_id, is_high=True)
     print_test_result("Test B: Online HIGH assessment", resp_b.status_code, resp_b.json(), counts_b)
 
     # Test C: Duplicate HIGH submission
-    resp_c = client.post("/api/v1/safety/assessments", json=high_payload)
+    resp_c = client.post("/api/v1/safety/assessments", json=high_payload, headers={"Authorization": "Bearer dummy_token"})
     counts_c = get_row_counts(high_id, is_high=True)
     print_test_result("Test C: Duplicate HIGH submission", resp_c.status_code, resp_c.json(), counts_c)
 
@@ -108,7 +108,7 @@ def run_tests():
     offline_payload = low_payload.copy()
     offline_payload["local_assessment_id"] = offline_id
     
-    resp_e = client.post("/api/v1/safety/assessments", json=offline_payload)
+    resp_e = client.post("/api/v1/safety/assessments", json=offline_payload, headers={"Authorization": "Bearer dummy_token"})
     counts_e = get_row_counts(offline_id)
     print_test_result("Test E: Restore network -> foreground app -> SYNCED", resp_e.status_code, resp_e.json(), counts_e)
 

@@ -79,10 +79,11 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 5. Insert Case if HIGH
-  IF p_final_risk_level = 'HIGH' THEN
-    INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level)
-    VALUES (p_user_id, p_assessment_id, 'OPEN', 'HIGH')
+  -- 5. Insert a case for HIGH risk or an explicit medical-help request.
+  IF p_final_risk_level = 'HIGH' OR COALESCE((p_answers->>'medical_help')::boolean, FALSE) THEN
+    INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level, medical_required)
+    VALUES (p_user_id, p_assessment_id, 'OPEN', p_final_risk_level,
+            COALESCE((p_answers->>'medical_help')::boolean, FALSE))
     RETURNING id INTO v_new_case_id;
     v_case_created := TRUE;
   END IF;

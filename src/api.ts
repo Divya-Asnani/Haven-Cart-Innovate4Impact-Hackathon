@@ -174,7 +174,8 @@ export const authFetch = async (
       ...baseHeaders,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    return fetchWithTimeout(url, { ...init, headers });
+    const requestUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    return fetchWithTimeout(requestUrl, { ...init, headers });
   };
 
   const token = tokenOverride ?? (await getAccessToken());
@@ -202,8 +203,10 @@ export const responderAuthFetch = async (
       ...baseHeaders,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    return fetchWithTimeout(url, { ...init, headers });
+    const requestUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    return fetchWithTimeout(requestUrl, { ...init, headers });
   };
+
 
   const token = await getResponderAccessToken();
   let res = await makeRequest(token);

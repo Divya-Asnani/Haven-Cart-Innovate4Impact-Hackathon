@@ -25,9 +25,12 @@ def _is_missing_profiles_table_error(exc: Exception) -> bool:
     return code == "PGRST205" and "profiles" in message
 
 
-def _build_auth_response(user_id: str, full_name: str, email: str, message: str | None = None):
-    access_token = create_access_token({"sub": user_id})
-    refresh_token = create_refresh_token({"sub": user_id})
+def _build_auth_response(user_id: str, full_name: str, email: str, message: str | None = None, responder_role: str | None = None):
+    claims = {"sub": user_id}
+    if responder_role:
+        claims["responder_role"] = responder_role
+    access_token = create_access_token(claims)
+    refresh_token = create_refresh_token(claims)
 
     payload = {
         "access_token": access_token,
@@ -44,6 +47,31 @@ def _build_auth_response(user_id: str, full_name: str, email: str, message: str 
         payload["message"] = message
 
     return payload
+
+
+def _get_verified_responder_roles(user_id: str) -> list[str]:
+    """Read active responder roles from the database, not from the client."""
+    roles: list[str] = []
+    # Newer deployments store the portal role in responders; retain the
+    # established user_roles schema as a compatibility path for this project.
+    try:
+        responder_rows = supabase.table("responders").select("role, is_active").eq("user_id", user_id).execute().data or []
+        for row in responder_rows:
+            role = str(row.get("role") or "").upper()
+            if row.get("is_active", True) and role in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"}:
+                roles.append(role)
+    except Exception:
+        pass
+    try:
+        rows = supabase.table("user_roles").select("is_active, roles(role_code, is_active)").eq("user_id", user_id).execute().data or []
+        for row in rows:
+            role_data = row.get("roles") or {}
+            role = str(role_data.get("role_code") or "").upper()
+            if row.get("is_active") and role_data.get("is_active") and role in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"} and role not in roles:
+                roles.append(role)
+    except Exception:
+        pass
+    return roles
 
 @router.post("/signup")
 async def signup(req: SignupRequest):
@@ -145,11 +173,24 @@ async def login(req: LoginRequest):
         except Exception:
             pass
 
+        verified_role = None
+        if req.role:
+            requested_role = req.role.strip().upper()
+            if requested_role not in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"}:
+                raise HTTPException(status_code=400, detail="Invalid responder role")
+            verified_roles = _get_verified_responder_roles(user_id)
+            if requested_role not in verified_roles:
+                raise HTTPException(status_code=403, detail="Role mismatch")
+            verified_role = requested_role
+
         return _build_auth_response(
             user_id=user_id,
             full_name=full_name,
             email=email or req.email,
+            responder_role=verified_role,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
@@ -184,7 +225,10 @@ async def refresh_token(req: RefreshTokenRequest):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
         
     # Generate new access token
-    access_token = create_access_token({"sub": user_id})
+    token_claims = {"sub": user_id}
+    if payload.get("responder_role"):
+        token_claims["responder_role"] = payload["responder_role"]
+    access_token = create_access_token(token_claims)
     
     # Update session in DB (simplistic, just update the most recent one)
     sessions_res = supabase.table("sessions").select("*").eq("user_id", user_id).order("last_active_at", desc=True).limit(1).execute()

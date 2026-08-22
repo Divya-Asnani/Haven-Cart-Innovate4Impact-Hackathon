@@ -27,17 +27,12 @@ import { useLanguage } from '../i18n/LanguageContext';
 const TRUSTED_CONTACTS = [
   { name: 'National DV Hotline', phone: '1-800-799-7233', type: 'hotline' },
   { name: 'Crisis Text Line', phone: 'Text HOME to 741741', type: 'text' },
-  { name: 'Emergency Services', phone: '112', type: 'emergency' },
+  { name: 'Emergency Services', phone: '1091', type: 'emergency' },
 ];
 
-<<<<<<< HEAD
 export const SessionHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { registerInactivityReset, triggerTouchActivity } = useApp();
-  const { t } = useLanguage();
-=======
-export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
   const { registerInactivityReset, triggerTouchActivity, currentRiskAssessment, clearSafetyState } = useApp();
->>>>>>> d7968ed9d8bdb9ae5f4e68c55ed4645d3035b837
+  const { t } = useLanguage();
 
   // Register inactivity timer — silently returns to decoy Home on timeout
   useEffect(() => {
@@ -67,7 +62,7 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
   const handleCall = (phoneNumber: string) => {
     triggerTouchActivity();
     const url = Platform.OS === 'android' ? `tel:${phoneNumber}` : `telprompt:${phoneNumber}`;
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(url).catch(() => { });
   };
 
   return (
@@ -122,20 +117,20 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
               style={{
                 backgroundColor:
                   currentRiskAssessment.riskLevel === 'HIGH' ? '#FEF2F2' :
-                  currentRiskAssessment.riskLevel === 'MEDIUM' ? '#FFFBEB' : '#F0FDF4',
+                    currentRiskAssessment.riskLevel === 'MEDIUM' ? '#FFFBEB' : '#F0FDF4',
                 padding: 16,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor:
                   currentRiskAssessment.riskLevel === 'HIGH' ? '#FCA5A5' :
-                  currentRiskAssessment.riskLevel === 'MEDIUM' ? '#FCD34D' : '#86EFAC',
+                    currentRiskAssessment.riskLevel === 'MEDIUM' ? '#FCD34D' : '#86EFAC',
                 marginBottom: 20,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <AlertTriangle size={18} color={
                   currentRiskAssessment.riskLevel === 'HIGH' ? '#DC2626' :
-                  currentRiskAssessment.riskLevel === 'MEDIUM' ? '#D97706' : '#16A34A'
+                    currentRiskAssessment.riskLevel === 'MEDIUM' ? '#D97706' : '#16A34A'
                 } />
                 <Text
                   style={{
@@ -143,19 +138,19 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
                     fontWeight: '800',
                     color:
                       currentRiskAssessment.riskLevel === 'HIGH' ? '#DC2626' :
-                      currentRiskAssessment.riskLevel === 'MEDIUM' ? '#D97706' : '#16A34A',
+                        currentRiskAssessment.riskLevel === 'MEDIUM' ? '#D97706' : '#16A34A',
                   }}
                 >
                   {currentRiskAssessment.riskLevel === 'HIGH' ? 'HIGH RISK DETECTED' :
-                   currentRiskAssessment.riskLevel === 'MEDIUM' ? 'MEDIUM RISK' : 'LOW RISK'}
+                    currentRiskAssessment.riskLevel === 'MEDIUM' ? 'MEDIUM RISK' : 'LOW RISK'}
                 </Text>
               </View>
               <Text style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 18 }}>
                 {currentRiskAssessment.riskLevel === 'HIGH'
                   ? 'Your safety assessment indicates a high-risk situation. Please use the emergency contacts below if you are in immediate danger.'
                   : currentRiskAssessment.riskLevel === 'MEDIUM'
-                  ? 'Your assessment indicates elevated risk. Consider reviewing your safety plan and trusted contacts.'
-                  : 'Your assessment does not indicate immediate severe risk. Continue to monitor your safety.'}
+                    ? 'Your assessment indicates elevated risk. Consider reviewing your safety plan and trusted contacts.'
+                    : 'Your assessment does not indicate immediate severe risk. Continue to monitor your safety.'}
               </Text>
             </View>
           )}
@@ -163,7 +158,7 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
           {/* Emergency Call Button */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleCall('112')}
+            onPress={() => handleCall('1091')}
             style={{
               backgroundColor: '#DC2626',
               padding: 18,
@@ -210,7 +205,7 @@ export const SessionHomeScreen = ({ navigation }: { navigation: any }) => {
                   onPress={() => {
                     triggerTouchActivity();
                     if (contact.type === 'text') {
-                      Linking.openURL('sms:741741?body=HOME').catch(() => {});
+                      Linking.openURL('sms:741741?body=HOME').catch(() => { });
                     } else {
                       handleCall(contact.phone);
                     }

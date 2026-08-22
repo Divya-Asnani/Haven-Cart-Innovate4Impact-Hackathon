@@ -13,3 +13,15 @@ print("Support Services:", len(res.data))
 
 res2 = supabase.table("trusted_contacts").select("*").execute()
 print("Trusted Contacts:", len(res2.data))
+
+
+
+
+
+
+
+
+
+
+
+

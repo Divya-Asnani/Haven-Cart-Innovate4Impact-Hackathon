@@ -59,8 +59,13 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
       // Phase 5: Persist locally
       await enqueueAssessment(assessmentResult, mlResult, finalResult, startedAt.current);
       
-      // Trigger non-blocking sync
-      syncOfflineAssessments();
+      // A HIGH-risk or medical-help assessment must reach the API before the
+      // completion flow can claim it has been saved.
+      if (finalResult.finalRiskLevel === 'HIGH' || assessmentResult.medical_help) {
+        await syncOfflineAssessments();
+      } else {
+        void syncOfflineAssessments();
+      }
 
       // Phase 4: Store in AppContext
       setCurrentRiskAssessment({

@@ -24,27 +24,16 @@ const linking = {
 export default function App() {
   return (
     <SafeAreaProvider>
-<<<<<<< HEAD
       <LanguageProvider>
         <AppProvider>
           <AppInitGate>
-            <NavigationContainer>
+            <NavigationContainer linking={linking}>
               <StatusBar style="dark" backgroundColor="#FFFFFF" />
               <RootNavigator />
             </NavigationContainer>
           </AppInitGate>
         </AppProvider>
       </LanguageProvider>
-=======
-      <AppProvider>
-        <AppInitGate>
-          <NavigationContainer linking={linking}>
-            <StatusBar style="dark" backgroundColor="#FFFFFF" />
-            <RootNavigator />
-          </NavigationContainer>
-        </AppInitGate>
-      </AppProvider>
->>>>>>> d7968ed9d8bdb9ae5f4e68c55ed4645d3035b837
     </SafeAreaProvider>
   );
 }

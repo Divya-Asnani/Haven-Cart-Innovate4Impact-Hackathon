@@ -13,10 +13,17 @@ async def get_assigned_cases(
     roles: list[str] = Depends(get_responder_roles),
     memberships: list[str] = Depends(get_responder_memberships)
 ):
-    # Base query for cases
+    # The verified JWT role is the sole role-filtering input. NGO sees every
+    # case; Medical sees only records explicitly marked medical_required.
     query = supabase.table("safety_cases").select(
-        "*, case_assignments(*, support_services(*)), emergency_alerts(*), safety_assessments(safety_assessment_answers(question_key, answer_value)), evidence_items(id), profiles(latitude, longitude)"
-    ).eq("risk_level", "HIGH")
+        "*, case_assignments(*, support_services(*)), emergency_alerts(*), evidence_items(id), profiles(latitude, longitude)"
+    )
+    if "ADMIN" in roles or "AUTHORITY" in roles:
+        pass # All cases, unfiltered
+    elif "MEDICAL" in roles and "NGO" not in roles:
+        query = query.eq("medical_required", True)
+    elif "NGO" in roles and "MEDICAL" not in roles:
+        query = query.eq("medical_required", False)
     
     cases_res = query.execute()
     
@@ -44,60 +51,7 @@ async def get_assigned_cases(
             if lat is not None and lon is not None:
                 has_location = True
 
-        medical_help_requested = False
-        if c.get("safety_assessments") and c["safety_assessments"].get("safety_assessment_answers"):
-            answers = c["safety_assessments"]["safety_assessment_answers"]
-            for ans in answers:
-                if ans.get("question_key") == "medical_help" and ans.get("answer_value") == "true":
-                    medical_help_requested = True
-                    break
-                
-        
-        # ---------------------------------------------------------
-        # ROLE-BASED AUTHORIZATION FILTERING
-        # ---------------------------------------------------------
-        
-        is_authorized = False
-        
-        if "ADMIN" in roles:
-            is_authorized = True
-        else:
-            if c.get("case_assignments"):
-                for assignment in c["case_assignments"]:
-                    # 1. Direct user assignment is universally allowed if they have ANY valid role
-                    if assignment.get("assigned_user_id") == user_id:
-                        is_authorized = True
-                        break
-                    
-                    # 2. Service-based assignment requires active membership AND correct role-type match
-                    service_id = assignment.get("support_service_id")
-                    svc_type = None
-                    if assignment.get("support_services"):
-                        svc_type = assignment["support_services"].get("service_type")
-                        
-                    # DEMO_NGO_USER_IDS fallback: If they are the demo user, they can see NGO cases without a membership
-                    from app.api.auth_deps import DEMO_NGO_USER_IDS
-                    is_demo_user = user_id in DEMO_NGO_USER_IDS or "00000000-0000-0000-0000-000000000000" in DEMO_NGO_USER_IDS
-                    
-                    if (service_id and service_id in memberships) or (is_demo_user and svc_type in ["NGO", "SHELTER", "HELPLINE", "OTHER"]):
-                        
-                        # NGO role can view cases assigned to their service (or demo users viewing NGO cases)
-                        if "NGO" in roles and svc_type in ["NGO", "SHELTER", "HELPLINE", "OTHER"]:
-                            is_authorized = True
-                            break
-                        
-                        # MEDICAL role can view cases assigned to a medical service
-                        if "MEDICAL" in roles and svc_type == "HOSPITAL":
-                            is_authorized = True
-                            break
-                            
-                        # AUTHORITY role can view cases assigned to authority services
-                        if "AUTHORITY" in roles and svc_type in ["POLICE", "AUTHORITY"]:
-                            is_authorized = True
-                            break
-            
-        if not is_authorized:
-            continue
+        medical_help_requested = bool(c.get("medical_required"))
             
         cases.append(NGOCaseResponse(
             case_id=c["id"],
@@ -118,6 +72,7 @@ async def get_assigned_cases(
         ))
         
     return cases
+
 
 def insert_audit_log(actor_id: str, action: str, case_id: str = None, metadata: dict = None):
     try:

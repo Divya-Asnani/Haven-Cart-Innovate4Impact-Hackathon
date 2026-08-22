@@ -44,6 +44,7 @@ CREATE TABLE safety_cases (
   assessment_id UUID UNIQUE REFERENCES safety_assessments(id) ON DELETE SET NULL,
   case_status TEXT NOT NULL DEFAULT 'OPEN' CHECK (case_status IN ('OPEN', 'ESCALATED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')),
   risk_level TEXT NOT NULL CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  medical_required BOOLEAN NOT NULL DEFAULT FALSE,
   latitude NUMERIC(10,7),
   longitude NUMERIC(10,7),
   location_accuracy_m NUMERIC(10,2) CHECK (location_accuracy_m >= 0),
