@@ -1,0 +1,71 @@
+{
+  "version": "1.0",
+  "model_type": "multinomial_logistic_regression_int8",
+  "features": [
+    "safe_now",
+    "perpetrator_present",
+    "can_leave_safely",
+    "medical_help",
+    "contact_requested"
+  ],
+  "classes": [
+    "HIGH",
+    "LOW",
+    "MEDIUM"
+  ],
+  "scaler": {
+    "mean": [
+      0.8612857142857143,
+      0.11185714285714286,
+      0.8367142857142857,
+      0.05071428571428571,
+      0.14592857142857144
+    ],
+    "scale": [
+      0.34564813416690277,
+      0.3151906128820774,
+      0.36962614869069854,
+      0.21941364346543152,
+      0.3530345924543199
+    ]
+  },
+  "classifier": {
+    "coefficients_int8": [
+      [
+        -37,
+        33,
+        -27,
+        13,
+        -1
+      ],
+      [
+        36,
+        -31,
+        32,
+        -18,
+        0
+      ],
+      [
+        2,
+        -2,
+        -5,
+        4,
+        1
+      ]
+    ],
+    "intercepts_int8": [
+      -127,
+      66,
+      61
+    ],
+    "quantization": {
+      "scheme": "symmetric_per_tensor",
+      "scale": 0.13533458298276893,
+      "zero_point": 0
+    }
+  },
+  "deployment": {
+    "offline": true,
+    "network_required_for_inference": false
+  }
+}

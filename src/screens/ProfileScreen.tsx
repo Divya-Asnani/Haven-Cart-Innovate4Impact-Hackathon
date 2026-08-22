@@ -1,0 +1,276 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Button } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut } from 'lucide-react-native';
+import { COLORS } from '../constants/theme';
+import { useApp } from '../context/AppContext';
+import { useLanguage, LanguageCode } from '../i18n/LanguageContext';
+
+const ORDERS_HISTORY = [
+  {
+    id: 'HC-948271',
+    date: '12 Aug 2026',
+    status: 'Delivered',
+    amount: 1798,
+    items: 'ANOUK Cotton Printed Kurta, HOME CENTRE Bedsheet',
+  },
+  {
+    id: 'HC-827103',
+    date: '28 Jul 2026',
+    status: 'Delivered',
+    amount: 1599,
+    items: 'HRX Rapid-Dry Running Shoes',
+  },
+];
+
+export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { isLoggedIn, logout, userProfile } = useApp();
+  const { t, language, setLanguage } = useLanguage();
+
+  const displayName = userProfile?.full_name || 'HavenCart User';
+  const displayEmail = userProfile?.email || '';
+  const nameInitial = displayName.charAt(0).toUpperCase();
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 12 }}>{t('not_logged_in')}</Text>
+        <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>
+          {t('please_login')}
+        </Text>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Login')}
+          style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', marginBottom: 12 }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('login')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Signup')}
+          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.primary }}
+        >
+          <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>{t('create_account')}</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }}>
+      <ScrollView contentContainerStyle={{ padding: 12 }} showsVerticalScrollIndicator={false}>
+        {/* User Card */}
+        <View
+          style={{
+            backgroundColor: '#1E293B',
+            borderRadius: 16,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: COLORS.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 18 }}>{nameInitial}</Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{displayName}</Text>
+            <Text style={{ fontSize: 12, color: '#F472B6', fontWeight: '700' }}>
+              {t('insider_member')}
+            </Text>
+            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
+              {displayEmail}
+            </Text>
+          </View>
+        </View>
+
+        {/* Order History */}
+        <View
+          style={{
+            backgroundColor: COLORS.card,
+            borderRadius: 16,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            marginBottom: 12,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <Package size={16} color={COLORS.primary} />
+            <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text, textTransform: 'uppercase' }}>
+              {t('recent_order_history')}
+            </Text>
+          </View>
+
+          <View style={{ gap: 10 }}>
+            {ORDERS_HISTORY.map((ord) => (
+              <View
+                key={ord.id}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: COLORS.border,
+                  paddingBottom: 8,
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text }}>{ord.id}</Text>
+                  <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.success }}>
+                      {ord.status === 'Delivered' ? t('delivered') : ord.status}
+                    </Text>
+                  </View>
+                </View>
+                <Text numberOfLines={1} style={{ fontSize: 11, color: COLORS.textSecondary, marginTop: 4 }}>
+                  {ord.items}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{ord.date}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.text }}>₹{ord.amount}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Language Selector */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text, marginBottom: 8, paddingHorizontal: 4 }}>
+            {t('language')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => setLanguage('en')}
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 8,
+                backgroundColor: language === 'en' ? COLORS.primary : COLORS.surface,
+                borderWidth: 1,
+                borderColor: language === 'en' ? COLORS.primary : COLORS.border,
+              }}
+            >
+              <Text style={{ fontWeight: '700', color: language === 'en' ? '#FFF' : COLORS.text }}>
+                English
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setLanguage('hi')}
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 8,
+                backgroundColor: language === 'hi' ? COLORS.primary : COLORS.surface,
+                borderWidth: 1,
+                borderColor: language === 'hi' ? COLORS.primary : COLORS.border,
+              }}
+            >
+              <Text style={{ fontWeight: '700', color: language === 'hi' ? '#FFF' : COLORS.text }}>
+                हिंदी
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Account Menu Items */}
+        <View
+          style={{
+            backgroundColor: COLORS.card,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            overflow: 'hidden',
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.navigate('LocationSettings')}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <MapPin size={18} color={COLORS.textSecondary} />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
+                {t('location_settings')}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AccountPlaceholder', { title: 'Saved Payment Cards' })}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <CreditCard size={18} color={COLORS.textSecondary} />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
+                {t('saved_payment_methods')}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AccountPlaceholder', { title: 'Help & Support' })}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <HelpCircle size={18} color={COLORS.textSecondary} />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
+                {t('customer_help_support')}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={async () => {
+              await logout();
+            }}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <LogOut size={18} color={COLORS.textSecondary} />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
+                {t('logout')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};

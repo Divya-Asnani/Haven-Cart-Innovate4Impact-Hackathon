@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "model_features": [
+    "safe_now",
+    "perpetrator_present",
+    "can_leave_safely",
+    "medical_help",
+    "contact_requested"
+  ],
+  "high_overrides": [
+    {
+      "condition": "safe_now == 0 AND perpetrator_present == 1 AND can_leave_safely == 0",
+      "risk": "HIGH",
+      "reason": "CRITICAL_CURRENT_DANGER"
+    },
+    {
+      "condition": "safe_now == 0 AND perpetrator_present == 1 AND medical_help == 1",
+      "risk": "HIGH",
+      "reason": "MEDICAL_DANGER"
+    },
+    {
+      "condition": "safe_now == 0 AND perpetrator_present == 1 AND lethal_weapon == 1",
+      "risk": "HIGH",
+      "reason": "LETHAL_WEAPON"
+    }
+  ],
+  "fallback": "ML_PREDICTION"
+}

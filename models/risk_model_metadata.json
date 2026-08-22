@@ -1,0 +1,20 @@
+{
+  "model_type": "multinomial_logistic_regression",
+  "features": [
+    "safe_now",
+    "perpetrator_present",
+    "can_leave_safely",
+    "medical_help",
+    "contact_requested"
+  ],
+  "classes": [
+    "HIGH",
+    "LOW",
+    "MEDIUM"
+  ],
+  "class_weight": "balanced",
+  "random_state": 42,
+  "training_data": "synthetic_only",
+  "deployment_target": "offline_on_device",
+  "rule_engine": "risk_rule_engine.json"
+}
