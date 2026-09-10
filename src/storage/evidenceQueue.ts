@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
-import { saveEncryptedEvidence, readEncryptedEvidence, deleteEvidenceFile, evidenceFileExists, readEvidenceFileAsBase64 } from './evidenceCrypto';
+import { saveEncryptedEvidence, readEncryptedEvidence, deleteEvidenceFile, evidenceFileExists, readEvidenceFileAsBase64, stringToBase64 } from './evidenceCrypto';
 
 const QUEUE_STORAGE_KEY = 'havencart_evidence_queue';
 
@@ -169,7 +169,7 @@ export const syncOfflineEvidence = async () => {
         ciphertext: encryptedBase64
       });
       // Convert JSON envelope back to base64
-      const uploadPayloadBase64 = btoa(uploadPayload);
+      const uploadPayloadBase64 = stringToBase64(uploadPayload);
 
       const requestBody = {
         evidence_id: item.evidence_id,
@@ -193,13 +193,16 @@ export const syncOfflineEvidence = async () => {
       });
 
       if (res.ok) {
+        console.log('[EvidenceQueue] Item synced successfully:', item.evidence_id);
         await updateEvidenceStatus(item.evidence_id, 'SYNCED');
-      } else if (res.status >= 400 && res.status < 500) {
+      } else {
+        const errorText = await res.text().catch(() => '');
+        console.error(`[EvidenceQueue] Failed to sync item ${item.evidence_id}: status=${res.status} error=${errorText}`);
         await updateEvidenceStatus(item.evidence_id, 'FAILED');
       }
     } catch (err) {
       console.error('[EvidenceQueue] Failed to sync item:', item.evidence_id, err);
-      // Revert to PENDING on network error
+      // Revert to PENDING on network error so next sync can retry
       await updateEvidenceStatus(item.evidence_id, 'PENDING');
     }
   }

@@ -38,11 +38,14 @@ export const readEvidenceFile = async (path: string): Promise<string> => {
   }
 };
 
+export const stringToBase64 = (str: string): string => {
+  return forge.util.encode64(str);
+};
+
 export const readEvidenceFileAsBase64 = async (path: string): Promise<string> => {
   if (Platform.OS === 'web') {
     const data = (await AsyncStorage.getItem(path)) || '';
-    // btoa is available in web browsers
-    return btoa(data);
+    return forge.util.encode64(data);
   } else {
     return await FileSystem.readAsStringAsync(path, { encoding: 'base64' });
   }

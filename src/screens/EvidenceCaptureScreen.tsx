@@ -109,7 +109,9 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
       }
 
       // Link to safety case if a HIGH risk assessment is currently in context
-      const localAssessmentId = currentRiskAssessment?.riskLevel === 'HIGH' ? currentRiskAssessment.assessedAt : null; 
+      const localAssessmentId = currentRiskAssessment?.riskLevel === 'HIGH'
+        ? (currentRiskAssessment.id || null)
+        : null; 
 
       await enqueueEvidence(activeTab, payloadBase64, localAssessmentId);
       

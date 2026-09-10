@@ -1,4 +1,28 @@
 import os
+import sys
+import logging
+from dotenv import load_dotenv, find_dotenv
+
+# Ensure environment variables are loaded properly
+load_dotenv(find_dotenv())
+backend_env = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", ".env")
+if os.path.exists(backend_env):
+    load_dotenv(backend_env, override=False)
+
+# Configure UTF-8 for stdout/stderr especially on Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+# Configure logging at INFO level
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,9 +65,15 @@ def root():
 
 @app.get("/health")
 def health():
-    """Lightweight health check — does not require a database connection."""
+    """Lightweight health check — reports database and Twilio configuration presence."""
     env_ok = bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY"))
-    return {"status": "ok", "database_configured": env_ok}
+    return {
+        "status": "ok",
+        "database_configured": env_ok,
+        "TWILIO_ACCOUNT_SID": "PRESENT" if bool(os.getenv("TWILIO_ACCOUNT_SID")) else "MISSING",
+        "TWILIO_AUTH_TOKEN": "PRESENT" if bool(os.getenv("TWILIO_AUTH_TOKEN")) else "MISSING",
+        "TWILIO_PHONE_NUMBER": "PRESENT" if bool(os.getenv("TWILIO_PHONE_NUMBER")) else "MISSING",
+    }
 
 @app.post("/admin/fix-images")
 async def fix_image_urls():
