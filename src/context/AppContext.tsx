@@ -80,8 +80,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Initialize App — retry on failure (Render free tier may need a cold-start)
   useEffect(() => {
     let cancelled = false;
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 3_000;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 4_000;
 
     const initApp = async (attempt = 0) => {
       setIsLoading(true);

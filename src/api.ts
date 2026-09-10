@@ -22,7 +22,7 @@ export const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
 
 // ── Fetch with timeout ─────────────────────────────────────────────────
 const FETCH_TIMEOUT_MS = 30_000;
-const HEALTH_CHECK_TIMEOUT_MS = 15_000;
+const HEALTH_CHECK_TIMEOUT_MS = 45_000;
 
 const fetchWithTimeout = async (
   input: RequestInfo,
@@ -230,7 +230,7 @@ export const responderAuthFetch = async (
           }
         }
       }
-    } catch {}
+    } catch { }
   }
 
   return res;

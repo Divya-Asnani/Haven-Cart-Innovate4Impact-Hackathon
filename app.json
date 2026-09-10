@@ -17,7 +17,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.havencart.app"
+      "bundleIdentifier": "com.havencart.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -44,8 +47,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "3c339f5b-a1f4-44e2-b088-8736be3d4f6c"
+        "projectId": "a2272eee-c189-45ac-bd40-88af265ca581"
       }
-    }
+    },
+    "owner": "prem265"
   }
 }

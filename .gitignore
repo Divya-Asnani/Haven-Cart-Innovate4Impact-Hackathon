@@ -66,3 +66,8 @@ backend/.venv_311/
 backend/.venv/
 .venv/
 venv/
+
+# Build artifacts and editor
+*.apk
+havencart.apk
+.idea/
