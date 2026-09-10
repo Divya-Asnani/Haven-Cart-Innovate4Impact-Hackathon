@@ -196,10 +196,11 @@ async def update_assignment_status(
     if status not in valid_transitions.get(current_status, []):
         raise HTTPException(status_code=400, detail=f"Cannot transition from {current_status} to {status}")
         
+        
     # 3. Prepare payload
     payload = {"assignment_status": status}
-    import datetime
-    now_iso = datetime.datetime.utcnow().isoformat()
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
     
     if status == "ACCEPTED":
         payload["accepted_at"] = now_iso
