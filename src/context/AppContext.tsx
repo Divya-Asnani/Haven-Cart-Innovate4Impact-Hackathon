@@ -17,6 +17,7 @@ interface UserProfile {
 }
 
 export interface CurrentRiskAssessment {
+  id?: string;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
   mlConfidence: number;
   decisionSource: "ML" | "RULE_OVERRIDE";

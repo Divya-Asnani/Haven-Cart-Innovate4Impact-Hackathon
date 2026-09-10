@@ -57,7 +57,7 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
       const finalResult = runRuleEngine(assessmentResult, mlResult);
 
       // Phase 5: Persist locally
-      await enqueueAssessment(assessmentResult, mlResult, finalResult, startedAt.current);
+      const persisted = await enqueueAssessment(assessmentResult, mlResult, finalResult, startedAt.current);
       
       // A HIGH-risk or medical-help assessment must reach the API before the
       // completion flow can claim it has been saved.
@@ -69,6 +69,7 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
 
       // Phase 4: Store in AppContext
       setCurrentRiskAssessment({
+        id: persisted.local_assessment_id,
         riskLevel: finalResult.finalRiskLevel,
         mlConfidence: finalResult.mlConfidence,
         decisionSource: finalResult.decisionSource,

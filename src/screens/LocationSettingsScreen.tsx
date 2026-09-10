@@ -111,16 +111,18 @@ export const LocationSettingsScreen: React.FC = () => {
 
         <TextInput
           placeholder={t('street_address')}
+          placeholderTextColor="#999999"
           value={address}
           onChangeText={setAddress}
-          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+          style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
         />
         
         <TextInput
           placeholder={t('city_placeholder')}
+          placeholderTextColor="#999999"
           value={city}
           onChangeText={setCity}
-          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+          style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
         />
 
         <TouchableOpacity 

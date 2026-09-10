@@ -61,6 +61,7 @@ export const AccountVerifyScreen: React.FC<{ navigation: any }> = ({ navigation 
         <View style={{ gap: 16 }}>
           <TextInput
             placeholder="4-digit PIN"
+            placeholderTextColor="#999999"
             value={pin}
             onChangeText={setPin}
             keyboardType="numeric"
@@ -69,6 +70,7 @@ export const AccountVerifyScreen: React.FC<{ navigation: any }> = ({ navigation 
             autoFocus
             style={{
               backgroundColor: COLORS.surface,
+              color: '#1A1A1A',
               padding: 16,
               borderRadius: 12,
               fontSize: 20,

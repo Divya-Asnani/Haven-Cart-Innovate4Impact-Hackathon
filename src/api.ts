@@ -7,7 +7,7 @@ const getApiBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!envUrl) {
     console.warn('EXPO_PUBLIC_API_URL is not set. Configure it in .env to a deployed backend URL.');
-    return 'https://REPLACE_WITH_RENDER_URL/api/v1';
+    return 'https://haven-cart-innovate4impact-hackathon.onrender.com/api/v1';
   }
 
   const normalized = normalizeBaseUrl(envUrl);

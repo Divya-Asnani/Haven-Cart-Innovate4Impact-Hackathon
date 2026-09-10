@@ -56,18 +56,20 @@ export const LoginScreen: React.FC = () => {
         <View style={{ gap: 16 }}>
           <TextInput
             placeholder={t('email_address')}
+            placeholderTextColor="#999999"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+            style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
           />
           <TextInput
             placeholder={t('password')}
+            placeholderTextColor="#999999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+            style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
           />
 
           <TouchableOpacity style={{ alignItems: 'flex-end' }}>

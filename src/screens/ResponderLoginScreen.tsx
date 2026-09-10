@@ -68,20 +68,20 @@ export const ResponderLoginScreen: React.FC = () => {
               <View style={{ gap: 16 }}>
           <TextInput
             placeholder="Responder Email"
-            placeholderTextColor="#64748b"
+            placeholderTextColor="#999999"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            style={{ backgroundColor: '#FFF', color: '#1E293B', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
+            style={{ backgroundColor: '#FFF', color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
           />
           <TextInput
             placeholder="Password"
-            placeholderTextColor="#64748b"
+            placeholderTextColor="#999999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            style={{ backgroundColor: '#FFF', color: '#1E293B', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
+            style={{ backgroundColor: '#FFF', color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
           />
 
           <View>

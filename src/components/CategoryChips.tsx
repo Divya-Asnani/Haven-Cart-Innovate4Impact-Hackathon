@@ -8,10 +8,10 @@ interface CategoryChipsProps {
   onSelectCategory: (id: string, name: string) => void;
 }
 
-export const CategoryChips: React.FC<CategoryChipsProps> = ({
+export const CategoryChips = ({
   activeCategory,
   onSelectCategory,
-}) => {
+}: CategoryChipsProps) => {
   return (
     <View style={{ backgroundColor: COLORS.background, paddingVertical: 10 }}>
       <ScrollView
