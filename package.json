@@ -10,7 +10,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:android": "eas build -p android --profile preview",
-    "start:backend": "cd backend && venv\\Scripts\\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000 --reload"
+    "start:backend": "cd backend && ..\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

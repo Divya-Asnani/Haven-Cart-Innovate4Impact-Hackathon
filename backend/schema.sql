@@ -180,6 +180,7 @@ CREATE TABLE safety_cases (
   assessment_id UUID UNIQUE REFERENCES safety_assessments(id) ON DELETE SET NULL,
   case_status TEXT NOT NULL DEFAULT 'OPEN' CHECK (case_status IN ('OPEN', 'ESCALATED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')),
   risk_level TEXT NOT NULL CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+  medical_required BOOLEAN NOT NULL DEFAULT FALSE,
   latitude NUMERIC(10,7),
   longitude NUMERIC(10,7),
   location_accuracy_m NUMERIC(10,2) CHECK (location_accuracy_m >= 0),
@@ -278,13 +279,12 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 5. Insert Case if HIGH
-  IF p_final_risk_level = 'HIGH' THEN
-    INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level)
-    VALUES (p_user_id, p_assessment_id, 'OPEN', 'HIGH')
-    RETURNING id INTO v_new_case_id;
-    v_case_created := TRUE;
-  END IF;
+  -- 5. Every completed assessment is a case. medical_required controls portal visibility.
+  INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level, medical_required)
+  VALUES (p_user_id, p_assessment_id, 'OPEN', p_final_risk_level,
+          COALESCE((p_answers->>'medical_help')::boolean, FALSE))
+  RETURNING id INTO v_new_case_id;
+  v_case_created := TRUE;
 
   -- 6. Return Success
   RETURN jsonb_build_object(

@@ -96,16 +96,26 @@ class EscalationPayload(BaseModel):
 class NGOCaseResponse(BaseModel):
     case_id: UUID
     user_id: UUID
+    assessment_id: Optional[UUID] = None
+    ml_risk_level: Optional[str] = None
+    final_risk_level: Optional[str] = None
+    decision_source: Optional[str] = None
+    model_version: Optional[str] = None
     risk_level: str
     case_status: str
     created_at: datetime
     assigned_service: Optional[SupportService] = None
     assignment_status: Optional[str] = None
     assignment_id: Optional[UUID] = None
+    assigned_user_id: Optional[UUID] = None
     has_location: bool = False
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     medical_help_requested: bool = False
     evidence_count: int = 0
     last_updated_at: Optional[datetime] = None
     alerts: List[EmergencyAlertResponse] = []
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())

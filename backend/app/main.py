@@ -27,7 +27,7 @@ logging.basicConfig(
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, session, products, cart, wishlist, profile, safety, evidence, support_services, trusted_contacts, escalation, ngo_portal
+from app.api import auth, session, products, cart, wishlist, profile, safety, evidence, support_services, trusted_contacts, escalation, ngo_portal, medical_portal, responder_alerts
 
 app = FastAPI(
     title="HavenCart API",
@@ -57,6 +57,8 @@ app.include_router(support_services.router)
 app.include_router(trusted_contacts.router)
 app.include_router(escalation.router)
 app.include_router(ngo_portal.router)
+app.include_router(medical_portal.router)
+app.include_router(responder_alerts.router)
 
 @app.get("/")
 def root():

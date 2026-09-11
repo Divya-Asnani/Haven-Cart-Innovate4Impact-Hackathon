@@ -4,8 +4,8 @@ import { INACTIVITY_TIMEOUT_MS } from '../constants/theme';
 import { api, getAccessToken, clearTokens, isAuthError } from '../api';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
-import { syncOfflineAssessments } from '../storage/assessmentQueue';
-import { syncOfflineEvidence } from '../storage/evidenceQueue';
+import { syncOfflineAssessments, clearAssessmentQueue } from '../storage/assessmentQueue';
+import { syncOfflineEvidence, clearEvidenceQueue } from '../storage/evidenceQueue';
 
 interface UserProfile {
   id: string;
@@ -123,8 +123,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const subscription = AppState.addEventListener('change', (nextAppState: any) => {
       if (nextAppState === 'active') {
-        syncOfflineAssessments();
-        syncOfflineEvidence().catch(e => console.error(e));
+        syncOfflineAssessments()
+          .then(() => syncOfflineEvidence())
+          .catch(e => console.error(e));
       }
     });
 
@@ -138,10 +139,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const clearAuthState = async () => {
     await clearTokens();
+    await clearEvidenceQueue();
+    await clearAssessmentQueue();
     setIsLoggedIn(false);
     setUserProfile(null);
     setCart([]);
     setWishlist([]);
+    clearSafetyState();
   };
 
   const checkAuthStatus = async () => {
@@ -157,7 +161,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const profile = await api.getProfile();
       setUserProfile(profile);
       await fetchCartAndWishlist();
-      syncOfflineAssessments();
+      await syncOfflineAssessments();
       syncOfflineEvidence().catch(e => console.error(e));
     } catch (err) {
       if (isAuthError(err)) {

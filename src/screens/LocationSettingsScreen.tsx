@@ -66,11 +66,23 @@ export const LocationSettingsScreen: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
+      let lat = 28.6139;
+      let lon = 77.2090;
+      try {
+        const geocoded = await Location.geocodeAsync(`${address}, ${city}`);
+        if (geocoded && geocoded.length > 0) {
+          lat = geocoded[0].latitude;
+          lon = geocoded[0].longitude;
+        }
+      } catch (geoErr) {
+        console.warn('Geocoding manual address failed:', geoErr);
+      }
+
       await api.updateLocation({
         address,
         city,
-        latitude: 0, // Manual entry fallback
-        longitude: 0
+        latitude: lat,
+        longitude: lon
       });
       setSuccess(t('location_updated'));
       setTimeout(() => navigation.goBack(), 1500);

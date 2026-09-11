@@ -3,15 +3,16 @@ from typing import Optional
 
 class SignupRequest(BaseModel):
     full_name: str
-    email: str
+    phone: str
+    email: Optional[str] = None
     password: str
     pin: str
 
 class LoginRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    identifier: Optional[str] = None
     password: str
-    # Present only for responder portal logins. The server verifies it against
-    # the responder record; it is never trusted on its own.
     role: Optional[str] = None
 
 class VerifyPinRequest(BaseModel):

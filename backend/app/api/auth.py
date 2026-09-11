@@ -75,23 +75,57 @@ def _get_verified_responder_roles(user_id: str) -> list[str]:
 
 @router.post("/signup")
 async def signup(req: SignupRequest):
-    # Generate hashes once for both DB and fallback paths.
+    if not req.phone or not req.phone.strip():
+        raise HTTPException(status_code=400, detail="Phone number is required.")
+    
+    clean_phone = req.phone.strip()
+    clean_email = req.email.strip() if req.email and req.email.strip() else None
+    effective_email = clean_email or f"{clean_phone}@havencart.app"
+
     password_hash = get_pin_hash(req.password)
     pin_hash = get_pin_hash(req.pin)
 
+    # 1. Attempt creating in Supabase Auth first to sync auth.users
+    auth_user_id = None
     try:
-        # Check if user already exists
-        response = supabase.table("profiles").select("*").eq("email", req.email).execute()
-        if response.data:
-            raise HTTPException(status_code=400, detail="Email already registered")
+        auth_admin_res = supabase.auth.admin.create_user({
+            "email": effective_email,
+            "password": req.password,
+            "email_confirm": True
+        })
+        if hasattr(auth_admin_res, "user") and auth_admin_res.user:
+            auth_user_id = str(auth_admin_res.user.id)
+    except Exception:
+        try:
+            temp_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+            sup_res = temp_client.auth.sign_up({"email": effective_email, "password": req.password})
+            if hasattr(sup_res, "user") and sup_res.user:
+                auth_user_id = str(sup_res.user.id)
+        except Exception:
+            pass
+
+    try:
+        # Check if phone number already exists
+        phone_res = supabase.table("profiles").select("id").eq("phone", clean_phone).execute()
+        if phone_res.data:
+            raise HTTPException(status_code=400, detail="Phone number already registered")
+
+        if clean_email:
+            email_res = supabase.table("profiles").select("id").eq("email", clean_email).execute()
+            if email_res.data:
+                raise HTTPException(status_code=400, detail="Email already registered")
 
         # Create Profile
         new_profile_data = {
             "full_name": req.full_name,
-            "email": req.email,
+            "phone": clean_phone,
+            "email": effective_email,
             "password_hash": password_hash,
             "security_pin_hash": pin_hash
         }
+        if auth_user_id:
+            new_profile_data["id"] = auth_user_id
+
         insert_res = supabase.table("profiles").insert(new_profile_data).execute()
 
         if not insert_res.data:
@@ -100,7 +134,6 @@ async def signup(req: SignupRequest):
         new_profile = insert_res.data[0]
         user_id = str(new_profile["id"])
 
-        # Session insert is best-effort to avoid auth hard-failure when session table/policies differ.
         try:
             supabase.table("sessions").insert({"user_id": user_id}).execute()
         except Exception:
@@ -109,90 +142,117 @@ async def signup(req: SignupRequest):
         return _build_auth_response(
             user_id=user_id,
             full_name=new_profile.get("full_name") or req.full_name,
-            email=new_profile.get("email") or req.email,
+            email=clean_email or effective_email,
             message="User registered",
         )
     except Exception as exc:
         if not _is_missing_profiles_table_error(exc):
             raise
 
-        # Fallback mode: allow auth flow to proceed when profiles table is unavailable.
-        existing = _fallback_users_by_email.get(req.email)
-        if existing:
-            raise HTTPException(status_code=400, detail="Email already registered")
-
-        user_id = str(uuid4())
+        user_id = auth_user_id or str(uuid4())
         user_record = {
             "id": user_id,
             "full_name": req.full_name,
-            "email": req.email,
+            "phone": clean_phone,
+            "email": effective_email,
             "password_hash": password_hash,
             "security_pin_hash": pin_hash,
         }
-        _fallback_users_by_email[req.email] = user_record
+        _fallback_users_by_email[clean_phone] = user_record
+        if clean_email:
+            _fallback_users_by_email[clean_email] = user_record
         _fallback_users_by_id[user_id] = user_record
 
         return _build_auth_response(
             user_id=user_id,
             full_name=req.full_name,
-            email=req.email,
+            email=clean_email or effective_email,
             message="User registered",
         )
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    try:
-        # Authenticate via Supabase Auth using a temp client to avoid corrupting global state
-        temp_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-        auth_response = temp_client.auth.sign_in_with_password({
-            "email": req.email,
-            "password": req.password
-        })
-        user_id = str(auth_response.user.id)
-        email = auth_response.user.email
+    auth_user_id = None
+    identifier = (req.identifier or req.email or req.phone or "").strip()
+    full_name = ""
+    email = identifier
 
-        # Try to fetch full_name from profiles, and create the profile if missing (so FKs don't fail)
-        full_name = ""
+    if not identifier or not req.password:
+        raise HTTPException(status_code=400, detail="Phone number / Email and Password are required.")
+
+    is_email = "@" in identifier
+    effective_email = identifier if is_email else f"{identifier}@havencart.app"
+
+    # Strategy 1: Search profiles table directly by phone or email
+    try:
+        if is_email:
+            profile_res = supabase.table("profiles").select("*").eq("email", identifier).execute()
+        else:
+            profile_res = supabase.table("profiles").select("*").eq("phone", identifier).execute()
+            if not profile_res.data:
+                profile_res = supabase.table("profiles").select("*").eq("email", effective_email).execute()
+
+        if profile_res.data:
+            prof = profile_res.data[0]
+            stored_hash = prof.get("password_hash")
+            if stored_hash and verify_pin(req.password, stored_hash):
+                auth_user_id = str(prof["id"])
+                full_name = prof.get("full_name") or ""
+                email = prof.get("email") or identifier
+    except Exception as exc:
+        if not _is_missing_profiles_table_error(exc):
+            pass
+
+    # Strategy 2: Attempt Supabase Auth login if Strategy 1 didn't resolve
+    if not auth_user_id:
         try:
-            profile_res = supabase.table("profiles").select("full_name").eq("id", user_id).execute()
+            temp_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+            auth_response = temp_client.auth.sign_in_with_password({
+                "email": effective_email,
+                "password": req.password
+            })
+            if auth_response and hasattr(auth_response, 'user') and auth_response.user:
+                auth_user_id = str(auth_response.user.id)
+                email = auth_response.user.email or identifier
+        except Exception:
+            auth_user_id = None
+
+    # Strategy 3: Check memory fallback dictionary
+    if not auth_user_id:
+        fallback_user = _fallback_users_by_email.get(identifier)
+        if not fallback_user:
+            fallback_user = next((u for u in _fallback_users_by_email.values() if u.get("phone") == identifier), None)
+        if fallback_user and verify_pin(req.password, fallback_user.get("password_hash")):
+            auth_user_id = fallback_user["id"]
+            full_name = fallback_user.get("full_name") or ""
+            email = fallback_user.get("email") or identifier
+
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Incorrect phone/email or password.")
+
+    # Fetch full_name from profiles if not loaded yet
+    if not full_name:
+        try:
+            profile_res = supabase.table("profiles").select("full_name").eq("id", auth_user_id).execute()
             if profile_res.data:
                 full_name = profile_res.data[0].get("full_name") or ""
-            else:
-                supabase.table("profiles").insert({
-                    "id": user_id,
-                    "email": email or req.email,
-                    "password_hash": "supabase-auth",
-                    "security_pin_hash": "supabase-auth",
-                    "full_name": ""
-                }).execute()
         except Exception:
             pass
 
-        try:
-            supabase.table("sessions").insert({"user_id": user_id}).execute()
-        except Exception:
-            pass
+    try:
+        supabase.table("sessions").insert({"user_id": auth_user_id}).execute()
+    except Exception:
+        pass
 
-        verified_role = None
-        if req.role:
-            requested_role = req.role.strip().upper()
-            if requested_role not in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"}:
-                raise HTTPException(status_code=400, detail="Invalid responder role")
-            verified_roles = _get_verified_responder_roles(user_id)
-            if requested_role not in verified_roles:
-                raise HTTPException(status_code=403, detail="Role mismatch")
-            verified_role = requested_role
+    verified_roles = _get_verified_responder_roles(auth_user_id)
+    verified_role = verified_roles[0] if verified_roles else None
 
-        return _build_auth_response(
-            user_id=user_id,
-            full_name=full_name,
-            email=email or req.email,
-            responder_role=verified_role,
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    return _build_auth_response(
+        user_id=auth_user_id,
+        full_name=full_name,
+        email=email,
+        responder_role=verified_role,
+    )
 
 @router.post("/verify-pin")
 async def verify_device_pin(req: VerifyPinRequest, user_id: str = Depends(get_current_user_id)):

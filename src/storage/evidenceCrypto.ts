@@ -86,6 +86,18 @@ export const getOrCreateVaultKey = async (): Promise<string> => {
 };
 
 /**
+ * Clears the master vault key and last hash from SecureStore on logout.
+ */
+export const clearVaultState = async () => {
+  try {
+    await SecureStore.deleteItemAsync(VAULT_KEY_STORAGE).catch(() => {});
+    await SecureStore.deleteItemAsync(LAST_HASH_STORAGE).catch(() => {});
+  } catch (err) {
+    console.error('Failed to clear vault key state', err);
+  }
+};
+
+/**
  * Gets the last hash in the chain, or a genesis hash if none exists.
  */
 export const getLastHash = async (): Promise<{ hash: string, index: number }> => {
@@ -155,7 +167,12 @@ export const decryptPayload = async (encryptedHex: string, ivHex: string, tagHex
     throw new Error('Decryption failed. Data may be corrupted or tampered with.');
   }
   
-  return decipher.output.toString();
+  const rawBytes = decipher.output.getBytes();
+  try {
+    return forge.util.decodeUtf8(rawBytes);
+  } catch (e) {
+    return rawBytes;
+  }
 };
 
 /**

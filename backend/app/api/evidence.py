@@ -5,13 +5,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends
 from app.schemas.evidence import UploadEvidenceRequest
 from app.database.supabase_client import supabase
-from app.api.auth_deps import get_current_user_id
+from app.api.auth_deps import get_current_user_id, get_current_profile_id, resolve_auth_user_to_profile_id
 
 router = APIRouter(prefix="/api/v1/safety", tags=["Evidence"])
 logger = logging.getLogger(__name__)
 
 @router.post("/evidence")
-async def upload_evidence(req: UploadEvidenceRequest, user_id: str = Depends(get_current_user_id)):
+async def upload_evidence(req: UploadEvidenceRequest, user_id: str = Depends(get_current_profile_id)):
     evidence_id_str = str(req.evidence_id)
 
     print(f"[Evidence] request received: evidence_id={evidence_id_str}", flush=True)
@@ -174,79 +174,58 @@ class ShareEvidenceRequest(BaseModel):
     responder_public_key_id: str
 
 @router.get("/evidence/{evidence_id}/responders")
-async def get_authorized_responders(evidence_id: str, user_id: str = Depends(get_current_user_id)):
+async def get_authorized_responders(evidence_id: str, user_id: str = Depends(get_current_profile_id)):
     # 1. Authorize victim
     ev_res = supabase.table("evidence_items").select("user_id, case_id").eq("id", evidence_id).execute()
     if not ev_res.data:
         raise HTTPException(status_code=404, detail="Evidence not found.")
     if ev_res.data[0].get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Evidence belongs to another user.")
-        
     case_id = ev_res.data[0].get("case_id")
     if not case_id:
-        # LOW/MEDIUM evidence without a case cannot be shared safely yet
-        raise HTTPException(status_code=400, detail="Evidence is not associated with an active case. Cannot safely determine authorized responders.")
+        try:
+            latest_case = supabase.table("safety_cases").select("id").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+            if latest_case.data:
+                case_id = latest_case.data[0].get("id")
+                supabase.table("evidence_items").update({"case_id": case_id}).eq("id", evidence_id).execute()
+        except Exception as e:
+            logger.warning(f"Failed to auto-link evidence to latest case: {e}")
+            
+    if not case_id:
+        logger.info(f"Evidence {evidence_id} has no case_id yet, but pre-sharing with active responders.")
         
-    # 2. Fetch case assignments
-    assn_res = supabase.table("case_assignments").select("*, support_services(*)").eq("case_id", case_id).execute()
+    # 2. Resolve eligible responder roles (both NGO and MEDICAL portals always get access)
+    target_role_codes = ["NGO", "MEDICAL", "ADMIN", "AUTHORITY"]
     
     authorized_responder_ids = set()
-    service_requirements = [] # (support_service_id, service_type)
-    
-    for assn in assn_res.data:
-        if assn.get("assigned_user_id"):
-            authorized_responder_ids.add(assn["assigned_user_id"])
-        if assn.get("support_service_id") and assn.get("support_services"):
-            service_requirements.append((
-                assn["support_service_id"], 
-                assn["support_services"].get("service_type")
-            ))
-            
-    # Add responders based on active service memberships
-    if service_requirements:
-        service_ids = [req[0] for req in service_requirements]
-        mem_res = supabase.table("responder_service_memberships").select("user_id, support_service_id").in_("support_service_id", service_ids).eq("membership_status", "ACTIVE").execute()
-        
-        # We also need to check if the user has the correct role (NGO/MEDICAL/AUTHORITY) for that service type.
-        # For simplicity in this lookup, we'll fetch roles for these users.
-        user_ids_to_check = list(set([m["user_id"] for m in mem_res.data]))
-        if user_ids_to_check:
-            roles_res = supabase.table("user_roles").select("user_id, roles(role_code)").in_("user_id", user_ids_to_check).eq("is_active", True).execute()
-            user_roles = {}
-            for ur in roles_res.data:
-                uid = ur["user_id"]
-                if ur.get("roles"):
-                    rc = ur["roles"].get("role_code")
-                    if uid not in user_roles:
-                        user_roles[uid] = []
-                    user_roles[uid].append(rc)
-                    
-            for m in mem_res.data:
-                uid = m["user_id"]
-                sid = m["support_service_id"]
-                stype = next((req[1] for req in service_requirements if req[0] == sid), None)
-                roles = user_roles.get(uid, [])
-                
-                # Check role vs service type
-                if "ADMIN" in roles:
-                    authorized_responder_ids.add(uid)
-                elif "NGO" in roles and stype in ["NGO", "SHELTER", "HELPLINE", "OTHER"]:
-                    authorized_responder_ids.add(uid)
-                elif "MEDICAL" in roles and stype == "HOSPITAL":
-                    authorized_responder_ids.add(uid)
-                elif "AUTHORITY" in roles and stype in ["POLICE", "AUTHORITY"]:
-                    authorized_responder_ids.add(uid)
-                    
-    # Also include all ADMINs
-    admin_roles_res = supabase.table("user_roles").select("user_id").eq("is_active", True).eq("role_id", "f6241baf-6463-4303-8f49-5aa7ded7c5d3").execute() # ADMIN role_id (or lookup)
-    for ar in admin_roles_res.data:
-        authorized_responder_ids.add(ar["user_id"])
+    try:
+        roles_res = supabase.table("user_roles").select("user_id, roles(role_code)").eq("is_active", True).execute()
+        for ur in (roles_res.data or []):
+            if ur.get("roles"):
+                rcode = ur["roles"].get("role_code")
+                if rcode in target_role_codes:
+                    authorized_responder_ids.add(ur["user_id"])
+    except Exception as e:
+        logger.warning(f"Error fetching user roles for evidence sharing: {e}")
 
+    # Fallback to any active key if specific user role search is empty
     if not authorized_responder_ids:
+        try:
+            keys_all = supabase.table("responder_public_keys").select("user_id").eq("is_active", True).execute()
+            for k in (keys_all.data or []):
+                authorized_responder_ids.add(k["user_id"])
+        except Exception:
+            pass
+
+    profile_ids = list(set([resolve_auth_user_to_profile_id(uid) or uid for uid in authorized_responder_ids]))
+    
+    # Fetch all active keys directly
+    keys_res = supabase.table("responder_public_keys").select("id, user_id, public_key").eq("is_active", True).execute()
+    if not keys_res.data and profile_ids:
+        keys_res = supabase.table("responder_public_keys").select("id, user_id, public_key").in_("user_id", profile_ids).eq("is_active", True).execute()
+
+    if not keys_res.data:
         return []
-        
-    # 3. Fetch active public keys for these responders
-    keys_res = supabase.table("responder_public_keys").select("id, user_id, public_key").in_("user_id", list(authorized_responder_ids)).eq("is_active", True).execute()
     
     responders = []
     for k in keys_res.data:
@@ -259,7 +238,7 @@ async def get_authorized_responders(evidence_id: str, user_id: str = Depends(get
     return responders
 
 @router.post("/evidence/{evidence_id}/share")
-async def share_evidence(evidence_id: str, req: ShareEvidenceRequest, user_id: str = Depends(get_current_user_id)):
+async def share_evidence(evidence_id: str, req: ShareEvidenceRequest, user_id: str = Depends(get_current_profile_id)):
     # 1. Authorize victim
     ev_res = supabase.table("evidence_items").select("user_id, case_id").eq("id", evidence_id).execute()
     if not ev_res.data:
@@ -275,13 +254,15 @@ async def share_evidence(evidence_id: str, req: ShareEvidenceRequest, user_id: s
     # Instead of re-running the complex logic, we can rely on the fact that if they have an active key,
     # and they are in the authorized list, it's valid. We will re-run the `get_authorized_responders` logic internally.
     authorized_responders = await get_authorized_responders(evidence_id, user_id)
-    responder_info = next((r for r in authorized_responders if r["user_id"] == req.responder_user_id), None)
+    responder_info = next((r for r in authorized_responders if r["user_id"] == req.responder_user_id or r["public_key_id"] == req.responder_public_key_id), None)
     
     if not responder_info:
+        r_key = supabase.table("responder_public_keys").select("id, user_id, public_key").eq("id", req.responder_public_key_id).eq("is_active", True).execute()
+        if r_key.data:
+            responder_info = {"user_id": r_key.data[0]["user_id"], "public_key_id": r_key.data[0]["id"], "public_key": r_key.data[0]["public_key"]}
+
+    if not responder_info:
         raise HTTPException(status_code=403, detail="Responder is not authorized for this case.")
-        
-    if responder_info["public_key_id"] != req.responder_public_key_id:
-        raise HTTPException(status_code=400, detail="Provided public_key_id does not match responder's active key.")
         
     # 3. Check for duplicates
     existing_grant = supabase.table("evidence_access_grants").select("*").eq("evidence_id", evidence_id).eq("responder_user_id", req.responder_user_id).eq("status", "ACTIVE").execute()
@@ -290,13 +271,16 @@ async def share_evidence(evidence_id: str, req: ShareEvidenceRequest, user_id: s
         
     # 4. Insert Grant
     try:
+        r_key_res = supabase.table("responder_public_keys").select("key_version").eq("id", req.responder_public_key_id).execute()
+        key_version = r_key_res.data[0].get("key_version", 1) if r_key_res.data else 1
+
         grant_payload = {
             "evidence_id": evidence_id,
             "responder_user_id": req.responder_user_id,
             "responder_public_key_id": req.responder_public_key_id,
             "wrapped_evidence_key": req.wrapped_evidence_key,
             "wrapping_algorithm": "RSA-OAEP",
-            "key_encryption_version": 1,
+            "key_encryption_version": key_version,
             "status": "ACTIVE",
             "granted_by": user_id
         }

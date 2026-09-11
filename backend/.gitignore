@@ -3,3 +3,4 @@ venv/
 __pycache__/
 **/__pycache__/
 *.pyc
+test_audit_db.js

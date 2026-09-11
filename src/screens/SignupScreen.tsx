@@ -167,18 +167,19 @@ export const SignupScreen: React.FC = () => {
   const { t } = useLanguage();
 
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [pinVisible, setPinVisible] = useState(false); // NEW: controls show/hide for the disguised PIN field
+  const [pinVisible, setPinVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSignup = async () => {
-    if (!fullName || !email || !password || !confirmPassword) {
-      setError(t('fill_in_all_fields'));
+    if (!fullName || !phone || !password || !confirmPassword) {
+      setError('Please fill in compulsory fields: Full Name, Phone Number, and Password');
       return;
     }
     if (password !== confirmPassword) {
@@ -199,7 +200,8 @@ export const SignupScreen: React.FC = () => {
     try {
       const res = await api.signup({
         full_name: fullName,
-        email,
+        phone,
+        email: email ? email.trim() : undefined,
         password,
         pin,
       });
@@ -209,8 +211,7 @@ export const SignupScreen: React.FC = () => {
       }
 
       await setTokens(res.access_token, res.refresh_token);
-      await checkAuthStatus(); // Update global auth state
-      // Navigate straight to decoy shopping app — NO PIN screen
+      await checkAuthStatus();
       navigation.replace('MainTabs');
     } catch (err: any) {
       setError(err.message || 'Signup failed');
@@ -234,14 +235,22 @@ export const SignupScreen: React.FC = () => {
 
           <View style={{ gap: 16 }}>
             <TextInput
-              placeholder={t('full_name')}
+              placeholder={`${t('full_name')} *`}
               placeholderTextColor="#999999"
               value={fullName}
               onChangeText={setFullName}
               style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
             />
             <TextInput
-              placeholder={t('email_address')}
+              placeholder="Phone Number *"
+              placeholderTextColor="#999999"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
+            />
+            <TextInput
+              placeholder="Email Address (Optional)"
               placeholderTextColor="#999999"
               value={email}
               onChangeText={setEmail}

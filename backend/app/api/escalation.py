@@ -4,7 +4,7 @@ import logging
 import traceback
 from datetime import datetime, timezone
 from app.database.supabase_client import supabase
-from app.api.auth_deps import get_current_user_id
+from app.api.auth_deps import get_current_profile_id
 from app.schemas.escalation import EscalationPayload
 from app.api.support_services import haversine_distance
 from app.services.sms import send_sms, mask_phone, normalize_e164, safe_print
@@ -39,7 +39,7 @@ def _build_user_message() -> str:
 
 
 @router.post("/assessments/{local_assessment_id}/escalate", response_model=EscalationPayload)
-async def escalate_assessment(local_assessment_id: str, user_id: str = Depends(get_current_user_id)):
+async def escalate_assessment(local_assessment_id: str, user_id: str = Depends(get_current_profile_id)):
     # 1. Lookup the case
     case_res = supabase.table("safety_cases").select("id, risk_level, user_id, medical_required").eq("assessment_id", local_assessment_id).eq("user_id", user_id).execute()
     if not case_res.data:

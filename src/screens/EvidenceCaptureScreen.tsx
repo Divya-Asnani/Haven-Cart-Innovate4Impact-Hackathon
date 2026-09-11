@@ -82,15 +82,20 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
       let payloadBase64 = '';
       
       const readAsBase64 = async (uri: string) => {
+        if (!uri) return '';
         if (uri.startsWith('data:')) {
-          return uri.split(',')[1];
+          const parts = uri.split(',');
+          return parts.length > 1 ? parts[1] : parts[0];
         }
-        if (Platform.OS === 'web') {
+        if (Platform.OS === 'web' || uri.startsWith('blob:') || uri.startsWith('http:') || uri.startsWith('https:')) {
           const response = await fetch(uri);
           const blob = await response.blob();
           return new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onload = () => {
+              const resStr = reader.result as string;
+              resolve(resStr.includes(',') ? resStr.split(',')[1] : resStr);
+            };
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
@@ -98,22 +103,33 @@ export const EvidenceCaptureScreen = ({ navigation }: { navigation: any }) => {
         return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
       };
 
+      let mimeType = 'text/plain';
+      let originalFilename = 'note.txt';
+
       if (activeTab === 'TEXT') {
         payloadBase64 = textContent; // Text stored directly
+        mimeType = 'text/plain';
+        originalFilename = 'note.txt';
       } else if (activeTab === 'PHOTO') {
         payloadBase64 = await readAsBase64(capturedPhoto as string);
-        if (Platform.OS !== 'web') await FileSystem.deleteAsync(capturedPhoto as string, { idempotent: true });
+        mimeType = 'image/jpeg';
+        originalFilename = 'photo.jpg';
+        if (Platform.OS !== 'web' && capturedPhoto?.startsWith('file://')) {
+          await FileSystem.deleteAsync(capturedPhoto, { idempotent: true }).catch(() => {});
+        }
       } else if (activeTab === 'AUDIO') {
         payloadBase64 = await readAsBase64(audioUri as string);
-        if (Platform.OS !== 'web') await FileSystem.deleteAsync(audioUri as string, { idempotent: true });
+        mimeType = 'audio/m4a';
+        originalFilename = 'audio.m4a';
+        if (Platform.OS !== 'web' && audioUri?.startsWith('file://')) {
+          await FileSystem.deleteAsync(audioUri, { idempotent: true }).catch(() => {});
+        }
       }
 
-      // Link to safety case if a HIGH risk assessment is currently in context
-      const localAssessmentId = currentRiskAssessment?.riskLevel === 'HIGH'
-        ? (currentRiskAssessment.id || null)
-        : null; 
+      // Link to safety case if an assessment is currently in context
+      const localAssessmentId = currentRiskAssessment?.id || null; 
 
-      await enqueueEvidence(activeTab, payloadBase64, localAssessmentId);
+      await enqueueEvidence(activeTab, payloadBase64, localAssessmentId, mimeType, originalFilename);
       
       // Trigger background sync
       syncOfflineEvidence().catch(e => console.error('[EvidenceCapture] Background sync error:', e));

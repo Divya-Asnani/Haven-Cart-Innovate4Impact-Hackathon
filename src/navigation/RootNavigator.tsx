@@ -29,6 +29,8 @@ import { TrustedContactsScreen } from '../screens/TrustedContactsScreen';
 import { ResponderLoginScreen } from '../screens/ResponderLoginScreen';
 import { ResponderDashboardScreen } from '../screens/ResponderDashboardScreen';
 import { ResponderCaseDetailScreen } from '../screens/ResponderCaseDetailScreen';
+import { MedicalDashboardScreen } from '../screens/MedicalDashboardScreen';
+import { MedicalCaseDetailScreen } from '../screens/MedicalCaseDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -129,6 +131,8 @@ export function RootNavigator() {
       <Stack.Screen name="ResponderLogin" component={ResponderLoginScreen} />
       <Stack.Screen name="ResponderDashboard" component={ResponderDashboardScreen} />
       <Stack.Screen name="ResponderCaseDetail" component={ResponderCaseDetailScreen} />
+      <Stack.Screen name="MedicalDashboard" component={MedicalDashboardScreen} />
+      <Stack.Screen name="MedicalCaseDetail" component={MedicalCaseDetailScreen} />
     </Stack.Navigator>
   );
 }

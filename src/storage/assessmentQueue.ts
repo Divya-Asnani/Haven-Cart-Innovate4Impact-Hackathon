@@ -55,6 +55,17 @@ export const getAssessmentQueue = async (): Promise<PersistedAssessment[]> => {
 };
 
 /**
+ * Clears the assessment queue from SecureStore.
+ */
+export const clearAssessmentQueue = async () => {
+  try {
+    await SecureStore.deleteItemAsync(QUEUE_STORAGE_KEY);
+  } catch (err) {
+    console.error('Failed to clear assessment queue', err);
+  }
+};
+
+/**
  * Persists an assessment to the offline queue.
  * Trims the queue if it exceeds MAX_QUEUE_SIZE to prevent Keychain overflow.
  */
@@ -194,9 +205,17 @@ export const syncOfflineAssessments = async () => {
         await markAssessmentSynced(assessment.local_assessment_id);
         console.log(`[AssessmentQueue] SYNC SUCCESS for ${assessment.local_assessment_id}`);
 
-        // Feature 5: Emergency Escalation
-        if (assessment.final_risk_level === 'HIGH') {
-          console.log(`[AssessmentQueue] Triggering Emergency Escalation for ${assessment.local_assessment_id}`);
+        // Trigger automatic offline evidence sync & sharing
+        try {
+          const { syncOfflineEvidence } = await import('./evidenceQueue');
+          syncOfflineEvidence().catch(e => console.error('[AssessmentQueue] Evidence sync error:', e));
+        } catch (e) {
+          console.error('[AssessmentQueue] Failed to import evidence queue:', e);
+        }
+
+        // Assign every completed case to the authorized support services.
+        if (['LOW', 'MEDIUM', 'HIGH'].includes(assessment.final_risk_level)) {
+          console.log(`[AssessmentQueue] Triggering Case Assignment for ${assessment.local_assessment_id}`);
           try {
             const escalationRes = await api.escalateAssessment(assessment.local_assessment_id);
             console.log(`[AssessmentQueue] Escalation successful:`, escalationRes);

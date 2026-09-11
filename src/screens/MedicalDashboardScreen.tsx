@@ -13,11 +13,11 @@ import { alignResponderKeyVersion, generateAndStoreResponderKeyPair, getCurrentK
 
 /* Shield icon from lucide */
 const ShieldIcon = ({ size = 18 }: { size?: number }) => (
-  <Shield size={size} color="#FF3F6C" />
+  <Shield size={size} color="#2563EB" />
 );
 
 
-export const ResponderDashboardScreen = () => {
+export const MedicalDashboardScreen = () => {
   const navigation = useNavigation<any>();
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export const ResponderDashboardScreen = () => {
   const fetchCases = async () => {
     try {
       setLoading(true);
-      const data = await api.getNGOCases();
+      const data = await api.getMedicalCases();
       setCases(data || []);
     } catch (err: any) {
       console.error(err);
@@ -56,7 +56,7 @@ export const ResponderDashboardScreen = () => {
           pubKeyPem = keyPair.publicKeyPem;
         }
         if (pubKeyPem) {
-          const registration = await api.registerResponderPublicKey(pubKeyPem, 'ngo');
+          const registration = await api.registerResponderPublicKey(pubKeyPem, 'medical');
           if (registration?.version && registration.version !== version) {
             await alignResponderKeyVersion(version, registration.version);
           }
@@ -71,14 +71,14 @@ export const ResponderDashboardScreen = () => {
   }, []);
 
   const fetchAlerts = async () => {
-    try { setAlerts((await api.getNGOAlerts()) || []); } catch (err) { console.error(err); }
+    try { setAlerts((await api.getMedicalAlerts()) || []); } catch (err) { console.error(err); }
   };
 
   const refreshPortal = () => { fetchCases(); fetchAlerts(); };
 
   const handleAssignToMe = async (caseId: string) => {
     try {
-      await api.assignNGOCaseToMe(caseId);
+      await api.assignMedicalCaseToMe(caseId);
       await fetchCases();
     } catch (err: any) {
       Alert.alert('Assignment failed', err.message || 'Could not assign this case.');
@@ -103,6 +103,7 @@ export const ResponderDashboardScreen = () => {
     if (activeFilter === 'High Risk' && c.risk_level !== 'HIGH') return false;
     if (activeFilter === 'Medium Risk' && c.risk_level !== 'MEDIUM') return false;
     if (activeFilter === 'Low Risk' && c.risk_level !== 'LOW') return false;
+    if (activeFilter === 'Medical' && !c.medical_help_requested) return false;
     if (activeFilter === 'Resolved' && !isResolved(c)) return false;
     if (searchQuery) {
       if (!c.case_id.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -135,8 +136,8 @@ export const ResponderDashboardScreen = () => {
       for (const caseId of selectedIds) {
         const c = cases.find(item => item.case_id === caseId);
         if (c) {
-          if (c.assignment_id) await api.updateNGOAssignment(c.assignment_id, 'RESOLVED');
-          else await api.resolveNGOCase(caseId);
+          if (c.assignment_id) await api.updateMedicalAssignment(c.assignment_id, 'RESOLVED');
+          else await api.resolveMedicalCase(caseId);
           resolvedIds.push(caseId);
         }
       }
@@ -170,7 +171,7 @@ export const ResponderDashboardScreen = () => {
 
       {/* ═══ TOP BAR ═══ */}
       <View style={{
-        height: 56, backgroundColor: '#FF3F6C',
+        height: 56, backgroundColor: '#2563EB',
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, zIndex: 50,
       }}>
@@ -183,7 +184,7 @@ export const ResponderDashboardScreen = () => {
               backgroundColor: t.active ? '#FFF' : 'transparent',
               paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
             }} onPress={() => setShowAlerts(t.label === 'Alerts')}>
-              <Text style={{ color: t.active ? '#FF3F6C' : '#FFF', fontSize: 12, fontWeight: '700' }}>{t.label}</Text>
+              <Text style={{ color: t.active ? '#2563EB' : '#FFF', fontSize: 12, fontWeight: '700' }}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -204,9 +205,9 @@ export const ResponderDashboardScreen = () => {
             onPress={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={14} color="#FF3F6C" />
+              <User size={14} color="#2563EB" />
             </View>
-            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Responder</Text>
+            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Medical</Text>
             <ChevronDown size={12} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -248,8 +249,8 @@ export const ResponderDashboardScreen = () => {
               alignItems: 'center', gap: 3,
               ...(item.active ? { backgroundColor: '#FFE4E6', padding: 8, borderRadius: 10, width: 58 } : { padding: 8 }),
             }}>
-              <item.icon size={18} color={item.active ? '#FF3F6C' : '#94A3B8'} />
-              <Text style={{ fontSize: 9, color: item.active ? '#FF3F6C' : '#94A3B8', fontWeight: item.active ? '700' : '500' }}>{item.label}</Text>
+              <item.icon size={18} color={item.active ? '#2563EB' : '#94A3B8'} />
+              <Text style={{ fontSize: 9, color: item.active ? '#2563EB' : '#94A3B8', fontWeight: item.active ? '700' : '500' }}>{item.label}</Text>
             </TouchableOpacity>
           ))}
           <View style={{ flex: 1 }} />
@@ -259,13 +260,13 @@ export const ResponderDashboardScreen = () => {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20 }}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refreshPortal} tintColor="#FF3F6C" />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refreshPortal} tintColor="#2563EB" />}
         >
-          {showAlerts && <ResponderAlertsPanel alerts={alerts} color="#FF3F6C" onRefresh={fetchAlerts} onAlertPress={(alert) => alert.case_id && navigation.navigate('ResponderCaseDetail', { caseId: alert.case_id })} />}
+          {showAlerts && <ResponderAlertsPanel alerts={alerts} color="#2563EB" onRefresh={fetchAlerts} onAlertPress={(alert) => alert.case_id && navigation.navigate('MedicalCaseDetail', { caseId: alert.case_id })} />}
           {/* Title */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <ShieldIcon size={20} />
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#1E293B' }}>Cases / Active Cases</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#1E293B' }}>Medical Cases</Text>
           </View>
           <Text style={{ fontSize: 16, color: '#64748B', marginBottom: 20, marginLeft: 28 }}>
             Manage and monitor active safety incidents and escalation requests.
@@ -274,7 +275,7 @@ export const ResponderDashboardScreen = () => {
           {/* Stat Cards */}
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
             <StatCard label="Total Cases" value={totalCount} />
-            <StatCard label="High Risk" value={highRiskCount} color="#FF3F6C" />
+            <StatCard label="High Risk" value={highRiskCount} color="#2563EB" />
             <StatCard label="Resolved" value={resolvedCount} color="#10B981" />
             <StatCard label="Pending" value={pendingCount} color="#F59E0B" />
           </View>
@@ -292,8 +293,8 @@ export const ResponderDashboardScreen = () => {
                 const isActive = activeFilter === f;
                 return (
                   <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={{
-                    backgroundColor: isActive ? '#FF3F6C' : '#FFF',
-                    borderWidth: 1, borderColor: isActive ? '#FF3F6C' : '#CBD5E1',
+                    backgroundColor: isActive ? '#2563EB' : '#FFF',
+                    borderWidth: 1, borderColor: isActive ? '#2563EB' : '#CBD5E1',
                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6,
                   }}>
                     <Text style={{ color: isActive ? '#FFF' : '#64748B', fontSize: 14, fontWeight: '600' }}>{f}</Text>
@@ -317,7 +318,7 @@ export const ResponderDashboardScreen = () => {
               <ChevronDown size={10} color="#64748B" />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleMarkSelectedResolved} style={{
-              backgroundColor: '#FF3F6C', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 6,
+              backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 6,
             }}>
               <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>Mark Selected Resolved</Text>
             </TouchableOpacity>
@@ -331,7 +332,7 @@ export const ResponderDashboardScreen = () => {
           ) : (
             displayedCases.map(c => {
               const isSelected = !!selectedCases[c.case_id];
-              const riskColor = c.risk_level === 'HIGH' ? '#FF3F6C' : c.risk_level === 'MEDIUM' ? '#D97706' : '#15803D';
+              const riskColor = c.risk_level === 'HIGH' ? '#2563EB' : c.risk_level === 'MEDIUM' ? '#D97706' : '#15803D';
               const riskBg = c.risk_level === 'HIGH' ? '#FFE4E6' : c.risk_level === 'MEDIUM' ? '#FEF3C7' : '#DCFCE7';
               return (
                 <View key={c.case_id} style={{
@@ -341,27 +342,32 @@ export const ResponderDashboardScreen = () => {
                 }}>
                   <TouchableOpacity onPress={() => toggleSelectCase(c.case_id)}>
                     {isSelected
-                      ? <CheckSquare size={18} color="#FF3F6C" />
+                      ? <CheckSquare size={18} color="#2563EB" />
                       : <Square size={18} color="#CBD5E1" />}
                   </TouchableOpacity>
 
                   <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() => navigation.navigate('ResponderCaseDetail', { caseId: c.case_id, assignmentId: c.assignment_id, c })}
+                      onPress={() => navigation.navigate('MedicalCaseDetail', { caseId: c.case_id, assignmentId: c.assignment_id, c })}
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 17, fontWeight: '700', color: '#FF3F6C' }}>
+                      <Text style={{ fontSize: 17, fontWeight: '700', color: '#2563EB' }}>
                         #{c.case_id.split('-')[0].toUpperCase()}
                       </Text>
                       <View style={{ backgroundColor: riskBg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 }}>
                         <Text style={{ color: riskColor, fontSize: 16, fontWeight: '800' }}>{c.risk_level}</Text>
                       </View>
-
+                      {c.medical_help_requested && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Activity size={10} color="#2563EB" />
+                          <Text style={{ color: '#2563EB', fontSize: 16, fontWeight: '700' }}>MEDICAL</Text>
+                        </View>
+                      )}
                       <View style={{ flex: 1 }} />
                       <Text style={{ fontSize: 16, color: '#94A3B8', fontWeight: '500' }}>
                         {c.assignment_status || c.case_status}
                       </Text>
                     </TouchableOpacity>
-                    {!c.assignment_id && !isResolved(c) && <TouchableOpacity onPress={() => handleAssignToMe(c.case_id)} style={{ backgroundColor: '#FF3F6C', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 5 }}><Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Assign to Me</Text></TouchableOpacity>}
+                    {!c.assignment_id && !isResolved(c) && <TouchableOpacity onPress={() => handleAssignToMe(c.case_id)} style={{ backgroundColor: '#2563EB', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 5 }}><Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Assign to Me</Text></TouchableOpacity>}
                     {c.assignment_id && <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>Assigned</Text>}
                     <ChevronRight size={14} color="#CBD5E1" />
                   </View>

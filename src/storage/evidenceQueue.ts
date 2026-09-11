@@ -1,6 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
-import { saveEncryptedEvidence, readEncryptedEvidence, deleteEvidenceFile, evidenceFileExists, readEvidenceFileAsBase64, stringToBase64 } from './evidenceCrypto';
+import {
+  saveEncryptedEvidence,
+  readEncryptedEvidence,
+  deleteEvidenceFile,
+  evidenceFileExists,
+  readEvidenceFileAsBase64,
+  stringToBase64,
+  recoverPEK,
+  clearVaultState
+} from './evidenceCrypto';
+import { wrapPEKForResponder } from './responderCrypto';
 
 const QUEUE_STORAGE_KEY = 'havencart_evidence_queue';
 
@@ -48,6 +58,26 @@ export const getEvidenceQueue = async (): Promise<EvidenceQueueItem[]> => {
  */
 const saveEvidenceQueue = async (queue: EvidenceQueueItem[]) => {
   await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+};
+
+/**
+ * Clears the evidence queue from AsyncStorage and deletes all local encrypted files.
+ */
+export const clearEvidenceQueue = async () => {
+  try {
+    const queue = await getEvidenceQueue();
+    for (const item of queue) {
+      if (item.file_path) {
+        await deleteEvidenceFile(item.file_path).catch(() => {});
+        const pekPath = item.file_path.replace('.enc', '.pek.enc');
+        await deleteEvidenceFile(pekPath).catch(() => {});
+      }
+    }
+    await clearVaultState();
+    await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
+  } catch (err) {
+    console.error('[EvidenceQueue] Failed to clear queue', err);
+  }
 };
 
 /**
@@ -147,6 +177,35 @@ export const getDecryptedEvidencePayload = async (evidenceId: string): Promise<s
 
 import { authFetch } from '../api';
 
+const shareEvidenceAutomatically = async (evidenceId: string) => {
+  const respondersRes = await authFetch(`/safety/evidence/${evidenceId}/responders`);
+  if (!respondersRes.ok) {
+    const detail = await respondersRes.text().catch(() => '');
+    console.warn(`[EvidenceQueue] Automatic sharing unavailable: ${detail}`);
+    return;
+  }
+  const responders = await respondersRes.json();
+  const pekHex = await recoverPEK(evidenceId);
+  if (!pekHex) {
+    console.warn(`[EvidenceQueue] No local PEK available for ${evidenceId}; grant creation skipped.`);
+    return;
+  }
+  for (const responder of responders) {
+    const wrappedEvidenceKey = wrapPEKForResponder(pekHex, responder.public_key);
+    const grantRes = await authFetch(`/safety/evidence/${evidenceId}/share`, {
+      method: 'POST',
+      body: JSON.stringify({
+        responder_user_id: responder.user_id,
+        wrapped_evidence_key: wrappedEvidenceKey,
+        responder_public_key_id: responder.public_key_id,
+      }),
+    });
+    if (!grantRes.ok) {
+      console.warn(`[EvidenceQueue] Automatic grant failed for ${responder.user_id}: ${await grantRes.text().catch(() => '')}`);
+    }
+  }
+};
+
 /**
  * Synchronizes pending evidence to the backend.
  */
@@ -195,6 +254,7 @@ export const syncOfflineEvidence = async () => {
       if (res.ok) {
         console.log('[EvidenceQueue] Item synced successfully:', item.evidence_id);
         await updateEvidenceStatus(item.evidence_id, 'SYNCED');
+        await shareEvidenceAutomatically(item.evidence_id);
       } else {
         const errorText = await res.text().catch(() => '');
         console.error(`[EvidenceQueue] Failed to sync item ${item.evidence_id}: status=${res.status} error=${errorText}`);
@@ -204,6 +264,14 @@ export const syncOfflineEvidence = async () => {
       console.error('[EvidenceQueue] Failed to sync item:', item.evidence_id, err);
       // Revert to PENDING on network error so next sync can retry
       await updateEvidenceStatus(item.evidence_id, 'PENDING');
+    }
+  }
+
+  // Retry automatic grants for evidence that uploaded before a responder key existed.
+  const syncedItems = (await getEvidenceQueue()).filter(item => item.sync_status === 'SYNCED');
+  for (const item of syncedItems) {
+    try { await shareEvidenceAutomatically(item.evidence_id); } catch (err) {
+      console.warn(`[EvidenceQueue] Automatic sharing retry failed for ${item.evidence_id}`, err);
     }
   }
 };
