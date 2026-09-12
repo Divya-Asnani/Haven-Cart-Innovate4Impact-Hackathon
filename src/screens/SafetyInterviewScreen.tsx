@@ -16,6 +16,9 @@ import { runMLInference } from '../ml/inference';
 import { runRuleEngine } from '../ml/ruleEngine';
 import { enqueueAssessment, syncOfflineAssessments } from '../storage/assessmentQueue';
 
+import * as Location from 'expo-location';
+import { api } from '../api';
+
 const QUESTIONS = [
   { id: 'safe_now', text: 'Are you safe right now?' },
   { id: 'perpetrator_present', text: 'Is the person who may harm you nearby?' },
@@ -42,6 +45,22 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
     }
 
     try {
+      // Attempt location update in background
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          if (loc?.coords?.latitude && loc?.coords?.longitude) {
+            await api.updateLocation({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            }).catch(() => {});
+          }
+        }
+      } catch (locErr) {
+        console.warn('[SafetyInterview] Could not update location:', locErr);
+      }
+
       const assessmentResult = {
         safe_now: answers['safe_now'],
         perpetrator_present: answers['perpetrator_present'],
@@ -57,7 +76,7 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
       const finalResult = runRuleEngine(assessmentResult, mlResult);
 
       // Phase 5: Persist locally
-      await enqueueAssessment(assessmentResult, mlResult, finalResult, startedAt.current);
+      const persisted = await enqueueAssessment(assessmentResult, mlResult, finalResult, startedAt.current);
       
       // A HIGH-risk or medical-help assessment must reach the API before the
       // completion flow can claim it has been saved.
@@ -69,6 +88,7 @@ export const SafetyInterviewScreen = ({ navigation }: { navigation: any }) => {
 
       // Phase 4: Store in AppContext
       setCurrentRiskAssessment({
+        id: persisted.local_assessment_id,
         riskLevel: finalResult.finalRiskLevel,
         mlConfidence: finalResult.mlConfidence,
         decisionSource: finalResult.decisionSource,

@@ -79,12 +79,12 @@ BEGIN
     END IF;
   END LOOP;
 
-    -- 5. Every completed assessment is a case. medical_required controls portal visibility.
-    INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level, medical_required)
-    VALUES (p_user_id, p_assessment_id, 'OPEN', p_final_risk_level,
-      COALESCE((p_answers->>'medical_help')::boolean, FALSE))
-    RETURNING id INTO v_new_case_id;
-    v_case_created := TRUE;
+  -- 5. Insert a case for ALL risk levels.
+  INSERT INTO safety_cases (user_id, assessment_id, case_status, risk_level, medical_required)
+  VALUES (p_user_id, p_assessment_id, 'OPEN', p_final_risk_level,
+          COALESCE((p_answers->>'medical_help')::boolean, FALSE))
+  RETURNING id INTO v_new_case_id;
+  v_case_created := TRUE;
 
   -- 6. Return Success
   RETURN jsonb_build_object(

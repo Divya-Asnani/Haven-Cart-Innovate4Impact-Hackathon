@@ -12,13 +12,13 @@ export const LoginScreen: React.FC = () => {
   const { checkAuthStatus } = useApp();
   const { t } = useLanguage();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!identifier || !password) {
       setError(t('fill_in_all_fields'));
       return;
     }
@@ -26,7 +26,7 @@ export const LoginScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await api.login({ email, password });
+      const res = await api.login({ identifier, password });
       if (!res.access_token || !res.refresh_token) {
         throw new Error('Login succeeded but tokens were not returned by backend');
       }
@@ -55,19 +55,21 @@ export const LoginScreen: React.FC = () => {
 
         <View style={{ gap: 16 }}>
           <TextInput
-            placeholder={t('email_address')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            placeholder="Phone Number or Email Address"
+            placeholderTextColor="#999999"
+            value={identifier}
+            onChangeText={setIdentifier}
+            keyboardType="default"
             autoCapitalize="none"
-            style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+            style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
           />
           <TextInput
             placeholder={t('password')}
+            placeholderTextColor="#999999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, fontSize: 16 }}
+            style={{ backgroundColor: COLORS.surface, color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 16 }}
           />
 
           <TouchableOpacity style={{ alignItems: 'flex-end' }}>
@@ -88,6 +90,14 @@ export const LoginScreen: React.FC = () => {
               <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>{t('signup')}</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ResponderLogin')} 
+            style={{ marginTop: 20, alignItems: 'center', padding: 12, backgroundColor: '#FFE4E6', borderRadius: 10 }}>
+            <Text style={{ color: '#FF3F6C', fontWeight: '800', fontSize: 14 }}>
+              Go to Responder Portal (NGO / Medical) →
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

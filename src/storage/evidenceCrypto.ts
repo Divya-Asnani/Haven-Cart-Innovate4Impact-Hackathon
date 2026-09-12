@@ -38,11 +38,14 @@ export const readEvidenceFile = async (path: string): Promise<string> => {
   }
 };
 
+export const stringToBase64 = (str: string): string => {
+  return forge.util.encode64(str);
+};
+
 export const readEvidenceFileAsBase64 = async (path: string): Promise<string> => {
   if (Platform.OS === 'web') {
     const data = (await AsyncStorage.getItem(path)) || '';
-    // btoa is available in web browsers
-    return btoa(data);
+    return forge.util.encode64(data);
   } else {
     return await FileSystem.readAsStringAsync(path, { encoding: 'base64' });
   }
@@ -80,6 +83,18 @@ export const getOrCreateVaultKey = async (): Promise<string> => {
     await SecureStore.setItemAsync(VAULT_KEY_STORAGE, keyHex);
   }
   return keyHex;
+};
+
+/**
+ * Clears the master vault key and last hash from SecureStore on logout.
+ */
+export const clearVaultState = async () => {
+  try {
+    await SecureStore.deleteItemAsync(VAULT_KEY_STORAGE).catch(() => {});
+    await SecureStore.deleteItemAsync(LAST_HASH_STORAGE).catch(() => {});
+  } catch (err) {
+    console.error('Failed to clear vault key state', err);
+  }
 };
 
 /**
@@ -152,7 +167,12 @@ export const decryptPayload = async (encryptedHex: string, ivHex: string, tagHex
     throw new Error('Decryption failed. Data may be corrupted or tampered with.');
   }
   
-  return decipher.output.toString();
+  const rawBytes = decipher.output.getBytes();
+  try {
+    return forge.util.decodeUtf8(rawBytes);
+  } catch (e) {
+    return rawBytes;
+  }
 };
 
 /**

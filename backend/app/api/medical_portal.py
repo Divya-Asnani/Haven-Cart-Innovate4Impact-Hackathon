@@ -6,7 +6,7 @@ from app.api.auth_deps import get_current_user_id, get_current_profile_id, get_r
 from app.schemas.escalation import NGOCaseResponse
 from uuid import UUID
 
-router = APIRouter(prefix="/api/v1/ngo", tags=["NGO Portal"])
+router = APIRouter(prefix="/api/v1/medical", tags=["Medical Portal"])
 
 @router.get("/cases", response_model=List[NGOCaseResponse])
 async def get_assigned_cases(
@@ -15,18 +15,18 @@ async def get_assigned_cases(
     roles: list[str] = Depends(get_responder_roles),
     memberships: list[str] = Depends(get_responder_memberships)
 ):
-    if "NGO" not in roles and "ADMIN" not in roles and "AUTHORITY" not in roles:
-        raise HTTPException(status_code=403, detail="User does not have NGO or Admin privileges.")
+    if "MEDICAL" not in roles and "ADMIN" not in roles:
+        raise HTTPException(status_code=403, detail="User does not have Medical privileges.")
 
-    # Base query for NGO cases
+    # Base query for Medical cases
     query = supabase.table("safety_cases").select(
-        "*, safety_assessments(id, ml_risk_level, final_risk_level, decision_source, model_version, created_at), case_assignments(*, support_services(*)), emergency_alerts(*), profiles(full_name, phone, latitude, longitude)"
+        "*, safety_assessments(id, ml_risk_level, final_risk_level, decision_source, model_version, created_at), case_assignments(*, support_services(*)), emergency_alerts(*), evidence_items(id), profiles(full_name, phone, latitude, longitude)"
     )
     
-    authorized_service_ids = get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"])
-    if "ADMIN" not in roles and "AUTHORITY" not in roles:
-        # Service membership authorizes the general NGO queue; assignment is ownership only.
-        query = query.in_("risk_level", ["LOW", "MEDIUM", "HIGH"])
+    authorized_service_ids = get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"])
+    if "ADMIN" not in roles:
+        # Medical membership plus medical_required authorizes visibility; assignment is ownership only.
+        query = query.eq("medical_required", True)
         
     cases_res = query.execute()
     cases_data = cases_res.data or []
@@ -68,7 +68,7 @@ async def get_assigned_cases(
         assignment_status = None
         assignment_id = None
         assigned_user_id = None
-        is_authorized = "ADMIN" in roles or "AUTHORITY" in roles or "NGO" in roles or bool(authorized_service_ids)
+        is_authorized = "ADMIN" in roles or "MEDICAL" in roles or bool(authorized_service_ids)
         
         if c.get("case_assignments"):
             own_assignment = next((assn for assn in c["case_assignments"]
@@ -140,19 +140,20 @@ async def resolve_case(
     roles: list[str] = Depends(get_responder_roles),
     memberships: list[str] = Depends(get_responder_memberships),
 ):
-    if "NGO" not in roles and "ADMIN" not in roles and "AUTHORITY" not in roles:
-        raise HTTPException(status_code=403, detail="User does not have NGO privileges.")
-    authorized = get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"])
-    if "ADMIN" not in roles and "AUTHORITY" not in roles and not authorized:
-        raise HTTPException(status_code=403, detail="No authorized NGO service membership.")
-    case_res = supabase.table("safety_cases").select("id").eq("id", case_id).execute()
+    if "MEDICAL" not in roles and "ADMIN" not in roles:
+        raise HTTPException(status_code=403, detail="User does not have Medical privileges.")
+    authorized = get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"])
+    if "ADMIN" not in roles and not authorized:
+        raise HTTPException(status_code=403, detail="No authorized medical service membership.")
+    case_res = supabase.table("safety_cases").select("id, medical_required").eq("id", case_id).execute()
     if not case_res.data:
         raise HTTPException(status_code=404, detail="Case not found")
+    if "ADMIN" not in roles and not case_res.data[0].get("medical_required"):
+        raise HTTPException(status_code=403, detail="Case is not a medical case.")
     now_iso = datetime.now(timezone.utc).isoformat()
     case_update = supabase.table("safety_cases").update({"case_status": "RESOLVED", "updated_at": now_iso}).eq("id", case_id).execute()
     if authorized:
         supabase.table("case_assignments").update({"assignment_status": "RESOLVED", "resolved_at": now_iso}).eq("case_id", case_id).in_("support_service_id", authorized).execute()
-    insert_audit_log(actor_id=user_id, action="CASE_RESOLVED", case_id=case_id)
     return case_update.data[0]
 
 
@@ -164,24 +165,25 @@ async def assign_case_to_me(
     roles: list[str] = Depends(get_responder_roles),
     memberships: list[str] = Depends(get_responder_memberships),
 ):
-    if "NGO" not in roles and "ADMIN" not in roles and "AUTHORITY" not in roles:
-        raise HTTPException(status_code=403, detail="User does not have NGO privileges.")
-    case_check = supabase.table("safety_cases").select("id, user_id").eq("id", case_id).execute()
-    if not case_check.data:
-        raise HTTPException(status_code=404, detail="Case not found")
-    c_user_id = case_check.data[0].get("user_id")
+    if "MEDICAL" not in roles and "ADMIN" not in roles:
+        raise HTTPException(status_code=403, detail="User does not have Medical privileges.")
+    
+    case_res = supabase.table("safety_cases").select("id, user_id, medical_required").eq("id", case_id).execute()
+    if not case_res.data or ("ADMIN" not in roles and not case_res.data[0].get("medical_required")):
+        raise HTTPException(status_code=404, detail="Medical case not found")
+    c_user_id = case_res.data[0].get("user_id")
     if c_user_id:
         try:
             supabase.table("evidence_items").update({"case_id": case_id}).eq("user_id", c_user_id).execute()
         except Exception:
             pass
         
-    authorized = get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"])
+    authorized = get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"])
     service_id = authorized[0] if authorized else None
     if not service_id:
-        ngo_services = supabase.table("support_services").select("id").in_("service_type", ["NGO", "SHELTER", "HELPLINE"]).eq("is_active", True).limit(1).execute()
-        if ngo_services.data:
-            service_id = str(ngo_services.data[0]["id"])
+        med_services = supabase.table("support_services").select("id").in_("service_type", ["MEDICAL", "HOSPITAL"]).eq("is_active", True).limit(1).execute()
+        if med_services.data:
+            service_id = str(med_services.data[0]["id"])
 
     # 1. If an assignment already exists for this case, update it
     existing = supabase.table("case_assignments").select("*").eq("case_id", case_id).execute()
@@ -198,15 +200,14 @@ async def assign_case_to_me(
         return updated.data[0] if updated.data else existing.data[0]
 
     # 2. Insert new assignment if none exists
-    payload = {
+    inserted = supabase.table("case_assignments").insert({
         "case_id": case_id,
         "support_service_id": service_id,
         "assigned_user_id": profile_id,
         "assigned_by_user_id": profile_id,
         "assignment_status": "ASSIGNED",
         "assigned_at": datetime.now(timezone.utc).isoformat(),
-    }
-    inserted = supabase.table("case_assignments").insert(payload).execute()
+    }).execute()
     if not inserted.data:
         raise HTTPException(status_code=500, detail="Could not assign case.")
     insert_audit_log(actor_id=user_id, action="CASE_ASSIGNED_TO_SELF", case_id=case_id, metadata={"assignment_id": inserted.data[0]["id"]})
@@ -234,10 +235,10 @@ async def record_case_view(
     roles: list[str] = Depends(get_responder_roles),
     memberships: list[str] = Depends(get_responder_memberships)
 ):
-    if "ADMIN" not in roles and "AUTHORITY" not in roles and not get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"]):
+    if "ADMIN" not in roles and not get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"]):
         raise HTTPException(status_code=403, detail="Not authorized to view this case.")
         
-    insert_audit_log(actor_id=user_id, action="CASE_VIEWED", case_id=case_id)
+    insert_audit_log(actor_id=user_id, action="MEDICAL_CASE_VIEWED", case_id=case_id)
     return {"status": "success"}
 
 @router.get("/cases/{case_id}/evidence")
@@ -249,29 +250,28 @@ async def get_case_evidence(
     memberships: list[str] = Depends(get_responder_memberships)
 ):
     # 1. Verify Case exists
-    case_res = supabase.table("safety_cases").select("id, user_id").eq("id", case_id).execute()
+    case_res = supabase.table("safety_cases").select("id").eq("id", case_id).execute()
     if not case_res.data:
         raise HTTPException(status_code=404, detail="Case not found")
-    c_user_id = case_res.data[0]["user_id"]
         
-    # 2. Service membership authorizes metadata visibility; assignment is not required.
-    if "ADMIN" not in roles and "AUTHORITY" not in roles and "NGO" not in roles and not get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"]):
+    # 2. Medical service membership authorizes metadata visibility; assignment is not required.
+    if "ADMIN" not in roles and "MEDICAL" not in roles and not get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"]):
             raise HTTPException(status_code=403, detail="Not assigned to this case. Access denied.")
 
     insert_audit_log(actor_id=user_id, action="EVIDENCE_VIEWED", case_id=case_id)
         
     # 3. Fetch evidence items metadata
-    evidence_res = supabase.table("evidence_items").select("id, evidence_type, mime_type, captured_at, original_filename").eq("case_id", case_id).execute()
+    evidence_res = supabase.table("evidence_items").select("id, evidence_type, mime_type, captured_at").eq("case_id", case_id).execute()
     evidence_items = evidence_res.data or []
-    
-    if c_user_id:
-        user_ev_res = supabase.table("evidence_items").select("id, evidence_type, mime_type, captured_at, original_filename").eq("user_id", c_user_id).execute()
-        for u_ev in (user_ev_res.data or []):
-            if not any(e["id"] == u_ev["id"] for e in evidence_items):
-                evidence_items.append(u_ev)
-            if u_ev.get("case_id") != case_id:
+    if not evidence_items:
+        case_info = supabase.table("safety_cases").select("user_id").eq("id", case_id).execute()
+        if case_info.data:
+            c_user_id = case_info.data[0]["user_id"]
+            user_ev = supabase.table("evidence_items").select("id, evidence_type, mime_type, captured_at").eq("user_id", c_user_id).execute()
+            if user_ev.data:
+                evidence_items = user_ev.data
                 try:
-                    supabase.table("evidence_items").update({"case_id": case_id}).eq("id", u_ev["id"]).execute()
+                    supabase.table("evidence_items").update({"case_id": case_id}).eq("user_id", c_user_id).execute()
                 except Exception:
                     pass
 
@@ -302,14 +302,15 @@ async def get_evidence_decryption_grant(
     key_version = grant.get("key_encryption_version", 1) if grant else 1
     
     # 2. Strict authorization: verify case assignment is still valid
-    if "ADMIN" not in roles and "NGO" not in roles:
+    if "ADMIN" not in roles and "MEDICAL" not in roles:
         ev_res = supabase.table("evidence_items").select("case_id, user_id").eq("id", evidence_id).execute()
         if not ev_res.data:
             raise HTTPException(status_code=404, detail="Evidence not found.")
         case_id = ev_res.data[0].get("case_id")
         
-        if case_id and not get_authorized_service_ids(memberships, ["NGO", "SHELTER", "HELPLINE"]):
-            raise HTTPException(status_code=403, detail="No authorized NGO service membership.")
+        if case_id:
+            if not get_authorized_service_ids(memberships, ["MEDICAL", "HOSPITAL"]):
+                raise HTTPException(status_code=403, detail="No authorized medical service membership.")
                 
     # 3. Fetch binary path and signed URL
     ev_items = supabase.table("evidence_items").select("user_id").eq("id", evidence_id).execute().data

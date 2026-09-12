@@ -13,6 +13,21 @@ export const getCurrentKeyVersion = async (): Promise<number> => {
 };
 
 /**
+ * Clears all stored responder private keys and current key version from SecureStore.
+ */
+export const clearResponderKeys = async () => {
+  try {
+    const currentVersion = await getCurrentKeyVersion();
+    for (let v = 1; v <= currentVersion + 5; v++) {
+      await SecureStore.deleteItemAsync(`${RESPONDER_KEY_PREFIX}${v}`).catch(() => {});
+    }
+    await SecureStore.deleteItemAsync(CURRENT_VERSION_STORAGE).catch(() => {});
+  } catch (err) {
+    console.error('Failed to clear responder keys', err);
+  }
+};
+
+/**
  * Generates an RSA-2048 keypair for the responder.
  * Stores the private key securely and returns the public key PEM and the new version.
  */
@@ -34,6 +49,7 @@ export const generateAndStoreResponderKeyPair = async (): Promise<{ publicKeyPem
         const keyStorageName = `${RESPONDER_KEY_PREFIX}${newVersion}`;
         await SecureStore.setItemAsync(keyStorageName, privateKeyPem);
         await SecureStore.setItemAsync(CURRENT_VERSION_STORAGE, newVersion.toString());
+        await SecureStore.setItemAsync(`responder_public_key_v${newVersion}`, publicKeyPem);
 
         resolve({ publicKeyPem, version: newVersion });
       });
@@ -41,6 +57,29 @@ export const generateAndStoreResponderKeyPair = async (): Promise<{ publicKeyPem
       reject(e);
     }
   });
+};
+
+export const alignResponderKeyVersion = async (localVersion: number, serverVersion: number): Promise<void> => {
+  if (localVersion === serverVersion) return;
+
+  const privateKeyPem = await SecureStore.getItemAsync(`${RESPONDER_KEY_PREFIX}${localVersion}`);
+  const publicKeyPem = await SecureStore.getItemAsync(`responder_public_key_v${localVersion}`);
+  if (!privateKeyPem || !publicKeyPem) {
+    throw new Error(`Local responder key version ${localVersion} is not available.`);
+  }
+
+  await SecureStore.setItemAsync(`${RESPONDER_KEY_PREFIX}${serverVersion}`, privateKeyPem);
+  await SecureStore.setItemAsync(`responder_public_key_v${serverVersion}`, publicKeyPem);
+  await SecureStore.setItemAsync(CURRENT_VERSION_STORAGE, serverVersion.toString());
+};
+
+/**
+ * Retrieves the stored public key PEM for a specific version.
+ */
+export const getResponderPublicKey = async (version?: number): Promise<string | null> => {
+  const v = version || await getCurrentKeyVersion();
+  if (v === 0) return null;
+  return await SecureStore.getItemAsync(`responder_public_key_v${v}`);
 };
 
 /**
@@ -87,6 +126,7 @@ export const wrapPEKForResponder = (pekHex: string, responderPublicKeyPem: strin
  */
 export const unwrapPEKForResponder = async (wrappedPEKHex: string, version: number): Promise<string> => {
   const privateKey = await getResponderPrivateKey(version);
+
   const encryptedBytes = forge.util.hexToBytes(wrappedPEKHex);
   
   const decrypted = privateKey.decrypt(encryptedBytes, 'RSA-OAEP', {

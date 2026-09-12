@@ -85,21 +85,24 @@ export const TrustedContactsScreen = ({ navigation }: { navigation: any }) => {
           <Text style={{ fontWeight: '700', color: COLORS.text, marginBottom: 12 }}>Add New Contact</Text>
           
           <TextInput
-            style={{ backgroundColor: COLORS.background, padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}
+            style={{ backgroundColor: COLORS.background, color: '#1A1A1A', padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}
             placeholder="Name"
+            placeholderTextColor="#999999"
             value={newName}
             onChangeText={setNewName}
           />
           <TextInput
-            style={{ backgroundColor: COLORS.background, padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}
+            style={{ backgroundColor: COLORS.background, color: '#1A1A1A', padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}
             placeholder="Phone Number"
+            placeholderTextColor="#999999"
             keyboardType="phone-pad"
             value={newPhone}
             onChangeText={setNewPhone}
           />
           <TextInput
-            style={{ backgroundColor: COLORS.background, padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}
+            style={{ backgroundColor: COLORS.background, color: '#1A1A1A', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}
             placeholder="Relationship (e.g., Sister)"
+            placeholderTextColor="#999999"
             value={newRelationship}
             onChangeText={setNewRelationship}
           />

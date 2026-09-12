@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { api, setResponderTokens, clearResponderTokens } from '../api';
+import { alignResponderKeyVersion, generateAndStoreResponderKeyPair, getCurrentKeyVersion, getResponderPublicKey } from '../storage/responderCrypto';
 
 export const ResponderLoginScreen: React.FC = () => {
   const { width } = useWindowDimensions();
@@ -11,8 +12,6 @@ export const ResponderLoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('NGO');
-  const [roleOpen, setRoleOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,23 +24,69 @@ export const ResponderLoginScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Phase 3: Use the existing FastAPI JWT authentication
-      const res = await api.login({ email, password, role });
+      const res = await api.login({ email, password });
       if (!res.access_token || !res.refresh_token) {
         throw new Error('Login succeeded but tokens were not returned by backend');
       }
 
       await setResponderTokens(res.access_token, res.refresh_token);
-      
-      // Verify Responder Access by calling a Responder API
+
+      // We need to parse the JWT to figure out the role because it's not explicitly in the JSON response payload.
+      // Alternatively, we just try to fetch the respective endpoint. 
+      // A better way is to decode the JWT manually since react-native doesn't have atob easily,
+      // but let's do a simple check.
+      let role = 'NGO'; // default assumption
       try {
-        await api.getNGOCases();
-        // If successful, navigate to responder dashboard
-        navigation.replace('ResponderDashboard');
+        const parts = res.access_token.split('.');
+        if (parts.length === 3) {
+          // Decode base64 payload. In React Native without atob, we can use a small decode function.
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+          const atob = (input: string) => {
+            let str = String(input).replace(/=+$/, '');
+            let output = '';
+            for (let bc = 0, bs, buffer, idx = 0; buffer = str.charAt(idx++); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0) {
+              buffer = chars.indexOf(buffer);
+            }
+            return output;
+          };
+          const payloadStr = atob(parts[1]);
+          const payload = JSON.parse(payloadStr);
+          if (payload.responder_role) {
+            role = payload.responder_role.toUpperCase();
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse JWT role, defaulting to NGO");
+      }
+
+      try {
+        let localVersion = await getCurrentKeyVersion();
+        let publicKeyPem = await getResponderPublicKey(localVersion);
+        if (!localVersion || !publicKeyPem) {
+          const keyPair = await generateAndStoreResponderKeyPair();
+          localVersion = keyPair.version;
+          publicKeyPem = keyPair.publicKeyPem;
+        }
+        const registration = await api.registerResponderPublicKey(publicKeyPem, role === 'MEDICAL' ? 'medical' : 'ngo');
+        if (registration?.version && registration.version !== localVersion) {
+          await alignResponderKeyVersion(localVersion, registration.version);
+        }
+      } catch (keyError) {
+        console.warn('Responder key registration failed; evidence sharing will remain unavailable until registered.', keyError);
+      }
+
+      try {
+        if (role === 'MEDICAL') {
+          await api.getMedicalCases();
+          navigation.replace('MedicalDashboard');
+        } else {
+          await api.getNGOCases();
+          navigation.replace('ResponderDashboard');
+        }
       } catch (accessErr: any) {
         // If 403/401, clear tokens and reject
         await clearResponderTokens();
-        throw new Error('Access Denied. You do not have Responder privileges.');
+        throw new Error('Access Denied. You do not have Responder privileges for this role.');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -66,47 +111,31 @@ export const ResponderLoginScreen: React.FC = () => {
               {error ? <Text style={{ color: '#ef4444', fontSize: 16, marginBottom: 16 }}>{error}</Text> : null}
 
               <View style={{ gap: 16 }}>
-          <TextInput
-            placeholder="Responder Email"
-            placeholderTextColor="#64748b"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={{ backgroundColor: '#FFF', color: '#1E293B', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
-          />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#64748b"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={{ backgroundColor: '#FFF', color: '#1E293B', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
-          />
+                <TextInput
+                  placeholder="Responder Email"
+                  placeholderTextColor="#999999"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={{ backgroundColor: '#FFF', color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
+                />
+                <TextInput
+                  placeholder="Password"
+                  placeholderTextColor="#999999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  style={{ backgroundColor: '#FFF', color: '#1A1A1A', padding: 16, borderRadius: 12, fontSize: 17, borderWidth: 1, borderColor: '#E2E8F0' }}
+                />
 
-          <View>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#334155', marginBottom: 8 }}>Login as</Text>
-            <TouchableOpacity onPress={() => setRoleOpen(!roleOpen)} style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 16 }}>
-              <Text style={{ fontSize: 17, color: '#1E293B' }}>{role}</Text>
-            </TouchableOpacity>
-            {roleOpen && (
-              <View style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, marginTop: 6, overflow: 'hidden' }}>
-                {['NGO', 'MEDICAL', 'AUTHORITY', 'ADMIN'].map(option => (
-                  <TouchableOpacity key={option} onPress={() => { setRole(option); setRoleOpen(false); }} style={{ padding: 15, borderBottomWidth: option === 'ADMIN' ? 0 : 1, borderBottomColor: '#F1F5F9' }}>
-                    <Text style={{ fontSize: 17, color: '#1E293B' }}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity 
-            onPress={handleLogin}
-            disabled={isLoading}
-            style={{ backgroundColor: '#FF3F6C', padding: 17, borderRadius: 12, alignItems: 'center', marginTop: 16, opacity: isLoading ? 0.7 : 1 }}
-          >
-            {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 17 }}>Authenticate</Text>}
-          </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  style={{ backgroundColor: '#FF3F6C', padding: 17, borderRadius: 12, alignItems: 'center', marginTop: 16, opacity: isLoading ? 0.7 : 1 }}
+                >
+                  {isLoading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 17 }}>Authenticate</Text>}
+                </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignItems: 'center', marginTop: 24 }}>
                   <Text style={{ color: '#64748B', fontSize: 16 }}>Return to Shop</Text>

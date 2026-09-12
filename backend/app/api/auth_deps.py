@@ -25,12 +25,54 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-# For the hackathon demo, we use a server-side allowlist of NGO User IDs.
-# In a real system, this would query RBAC/roles.
-# Replace this UUID with the actual UUID of your demo NGO account once created.
-DEMO_NGO_USER_IDS = [
-    "00000000-0000-0000-0000-000000000000", # Placeholder
-]
+def get_current_profile_id(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_user_id: str = Depends(get_current_user_id),
+) -> str:
+    """Resolve the authenticated auth.users ID to the application's profiles ID."""
+    try:
+        profile_res = supabase.table("profiles").select("id").eq("id", auth_user_id).limit(1).execute()
+        if profile_res.data:
+            return str(profile_res.data[0]["id"])
+    except Exception:
+        # auth.users IDs may be valid UUIDs unrelated to profiles.id, or may be
+        # represented differently by an upstream auth provider. Fall back to email.
+        pass
+
+    payload = decode_token(credentials.credentials)
+    email = payload.get("email")
+    if not email:
+        try:
+            auth_user = supabase.auth.admin.get_user_by_id(auth_user_id)
+            email = getattr(getattr(auth_user, "user", None), "email", None)
+        except Exception:
+            email = None
+
+    if email:
+        profile_res = supabase.table("profiles").select("id").eq("email", email).limit(1).execute()
+        if profile_res.data:
+            return str(profile_res.data[0]["id"])
+
+    raise HTTPException(status_code=403, detail="Authenticated user has no application profile.")
+
+def resolve_auth_user_to_profile_id(auth_user_id: str) -> str | None:
+    """Resolve an auth.users ID to profiles.id without assuming the values match."""
+    try:
+        direct = supabase.table("profiles").select("id").eq("id", auth_user_id).limit(1).execute()
+        if direct.data:
+            return str(direct.data[0]["id"])
+    except Exception:
+        pass
+    try:
+        auth_user = supabase.auth.admin.get_user_by_id(auth_user_id)
+        email = getattr(getattr(auth_user, "user", None), "email", None)
+        if email:
+            profile = supabase.table("profiles").select("id").eq("email", email).limit(1).execute()
+            if profile.data:
+                return str(profile.data[0]["id"])
+    except Exception:
+        pass
+    return None
 
 def get_responder_roles(credentials: HTTPAuthorizationCredentials = Depends(security)) -> list[str]:
     """
@@ -48,10 +90,6 @@ def get_responder_roles(credentials: HTTPAuthorizationCredentials = Depends(secu
 
     user_id = payload.get("sub")
     roles = []
-    
-    # Backward compatibility with existing DEMO_NGO_USER_IDS
-    if user_id in DEMO_NGO_USER_IDS or "00000000-0000-0000-0000-000000000000" in DEMO_NGO_USER_IDS:
-        roles.append("NGO")
         
     try:
         # We query user_roles joined with roles
@@ -88,6 +126,23 @@ def get_responder_memberships(user_id: str = Depends(get_current_user_id)) -> li
         print(f"Error fetching memberships: {e}")
         
     return service_ids
+
+def get_authorized_service_ids(membership_ids: list[str], service_types: list[str]) -> list[str]:
+    """Return active verified services of the requested types for the responder memberships."""
+    if not membership_ids:
+        return []
+    try:
+        res = (supabase.table("support_services")
+               .select("id")
+               .in_("id", membership_ids)
+               .in_("service_type", service_types)
+               .eq("is_active", True)
+               .eq("is_verified", True)
+               .execute())
+        return [str(row["id"]) for row in (res.data or [])]
+    except Exception as e:
+        print(f"Error resolving authorized services: {e}")
+        return []
 
 def get_ngo_user_id(
     user_id: str = Depends(get_current_user_id),

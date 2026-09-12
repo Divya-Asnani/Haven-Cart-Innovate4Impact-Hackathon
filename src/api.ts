@@ -1,13 +1,25 @@
 import * as SecureStore from './storage/secureStoreWrapper';
 import { Product } from './types/navigation';
 
+import { Platform } from 'react-native';
+
 const normalizeBaseUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
 const getApiBaseUrl = () => {
+  // QUICK FIX: Force correct local loopback IPs in development, ignoring .env
+  // because Windows Firewall often blocks LAN IPs (192.168.x.x) for the emulator.
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:8000/api/v1'; // Android Emulator loopback
+    } else {
+      return 'http://localhost:8000/api/v1'; // iOS Simulator or Web loopback
+    }
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!envUrl) {
     console.warn('EXPO_PUBLIC_API_URL is not set. Configure it in .env to a deployed backend URL.');
-    return 'https://REPLACE_WITH_RENDER_URL/api/v1';
+    return 'https://haven-cart-innovate4impact-hackathon.onrender.com/api/v1';
   }
 
   const normalized = normalizeBaseUrl(envUrl);
@@ -279,13 +291,13 @@ export const api = {
     return handleResponse(res);
   },
 
-  login: async (data: any) => {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
+  login: async (credentials: { identifier?: string; email?: string; phone?: string; password: string }) => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(credentials),
     });
-    return handleResponse(res);
+    return handleResponse(response);
   },
 
   verifyPin: async (pin: string) => {
@@ -432,6 +444,16 @@ export const api = {
     return handleResponse(res);
   },
 
+  getNGOAlerts: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/alerts`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  assignNGOCaseToMe: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases/${caseId}/assign-to-me`, { method: 'POST' });
+    return handleResponse(res);
+  },
+
   getNGOCaseEvidence: async (caseId: string) => {
     const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases/${caseId}/evidence`, { method: 'GET' });
     return handleResponse(res);
@@ -446,6 +468,57 @@ export const api = {
     const res = await responderAuthFetch(`${API_BASE_URL}/ngo/assignments/${assignmentId}?status=${status}`, {
       method: 'PATCH',
     });
+    return handleResponse(res);
+  },
+
+  resolveNGOCase: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/cases/${caseId}/resolve`, { method: 'PATCH' });
+    return handleResponse(res);
+  },
+
+  // Medical Portal
+  getMedicalCases: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  getMedicalAlerts: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/alerts`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  assignMedicalCaseToMe: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases/${caseId}/assign-to-me`, { method: 'POST' });
+    return handleResponse(res);
+  },
+
+  registerResponderPublicKey: async (publicKey: string, portal: 'ngo' | 'medical' = 'ngo') => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/${portal}/keys`, {
+      method: 'POST',
+      body: JSON.stringify({ public_key: publicKey }),
+    });
+    return handleResponse(res);
+  },
+
+  getMedicalCaseEvidence: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases/${caseId}/evidence`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  recordMedicalCaseView: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases/${caseId}/view`, { method: 'POST' });
+    return handleResponse(res);
+  },
+
+  updateMedicalAssignment: async (assignmentId: string, status: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/assignments/${assignmentId}?status=${status}`, {
+      method: 'PATCH',
+    });
+    return handleResponse(res);
+  },
+
+  resolveMedicalCase: async (caseId: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases/${caseId}/resolve`, { method: 'PATCH' });
     return handleResponse(res);
   },
 };

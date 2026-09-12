@@ -5,7 +5,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import {
   Bell, Settings, User, ChevronDown, ChevronRight,
   HelpCircle, Home, FileText, RefreshCw,
-  Activity, MapPin, Paperclip, Clock, CheckCircle, LogOut, ArrowLeft, Shield, X
+  Activity, MapPin, Paperclip, Clock, CheckCircle, LogOut, ArrowLeft, Shield
 } from 'lucide-react-native';
 import { api, responderAuthFetch, clearResponderTokens } from '../api';
 import { unwrapPEKForResponder } from '../storage/responderCrypto';
@@ -14,16 +14,31 @@ import forge from 'node-forge';
 
 /* Shield icon from lucide */
 const ShieldIcon = ({ size = 18 }: { size?: number }) => (
-  <Shield size={size} color="#FF3F6C" />
+  <Shield size={size} color="#2563EB" />
 );
 
 
-export const ResponderCaseDetailScreen = () => {
+export const MedicalCaseDetailScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
 
-  const initialCaseData = route.params?.caseData || route.params?.c;
-  const [caseData, setCaseData] = useState<any>(initialCaseData);
+  const initialCase = route.params?.c || route.params?.caseData;
+  const caseId = route.params?.caseId || initialCase?.case_id;
+  const [caseData, setCaseData] = useState<any>(initialCase);
+  const assignmentId = caseData?.assignment_id || route.params?.assignmentId;
+
+  const handleAssignToMe = async () => {
+    try {
+      setUpdating(true);
+      await api.assignMedicalCaseToMe(caseId);
+      await fetchCaseDetail();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not assign case.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -42,31 +57,17 @@ export const ResponderCaseDetailScreen = () => {
     capturedAt?: string;
   } | null>(null);
 
-  const caseId = caseData?.case_id || route.params?.caseId;
-  const assignmentId = caseData?.assignment_id || route.params?.assignmentId;
-
-  const handleAssignToMe = async () => {
-    try {
-      setUpdating(true);
-      await api.assignNGOCaseToMe(caseId);
-      await fetchCaseDetail();
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not assign case.');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const fetchCaseDetail = async () => {
-    // In a real app we might fetch a single case by ID, but for the hackathon
-    // we can just refetch all cases and find ours, or rely on the initial data since it's fully populated.
     try {
       setLoading(true);
-      const data = await api.getNGOCases();
+      const data = await api.getMedicalCases();
       const updatedCase = data.find((c: any) => c.case_id === caseId);
       if (updatedCase) setCaseData(updatedCase);
     } catch (err: any) {
       console.error(err);
+      if (err.message?.includes('401') || err.message?.includes('403')) {
+        handleLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -74,9 +75,8 @@ export const ResponderCaseDetailScreen = () => {
 
   useEffect(() => {
     if (caseId) {
-      // Record CASE_VIEWED audit log
       api.recordCaseView(caseId).catch(err => console.error('Failed to log case view:', err));
-      if (!initialCaseData) fetchCaseDetail();
+      if (!initialCase) fetchCaseDetail();
     } else {
       navigation.goBack();
     }
@@ -89,19 +89,20 @@ export const ResponderCaseDetailScreen = () => {
     navigation.reset({ index: 0, routes: [{ name: 'ResponderLogin' }] });
   };
 
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleStatusUpdate = async (status: string) => {
     try {
       setUpdating(true);
-      if (newStatus === 'ASSIGNED') {
-        await api.assignNGOCaseToMe(caseId);
-      } else if (caseData.assignment_id) {
-        await api.updateNGOCaseAssignment(caseData.assignment_id, newStatus);
-      } else {
-        await api.resolveNGOCase(caseData.case_id);
-      }
+      const updatedAssignment = assignmentId
+        ? await api.updateMedicalAssignment(assignmentId, status)
+        : await api.resolveMedicalCase(caseData.case_id);
+      setCaseData((current: any) => ({
+        ...current,
+        assignment_status: updatedAssignment.assignment_status ?? status,
+        case_status: status === 'RESOLVED' ? 'RESOLVED' : current.case_status,
+      }));
       await fetchCaseDetail();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not update status.');
+      Alert.alert('Error', err.message || 'Could not update status');
     } finally {
       setUpdating(false);
     }
@@ -115,7 +116,7 @@ export const ResponderCaseDetailScreen = () => {
 
     try {
       setFetchingEvidence(true);
-      const data = await api.getNGOCaseEvidence(caseData.case_id);
+      const data = await api.getMedicalCaseEvidence(caseData.case_id);
       setEvidenceList(data || []);
       setShowEvidence(true);
     } catch (err: any) {
@@ -130,7 +131,7 @@ export const ResponderCaseDetailScreen = () => {
       setDecryptingId(ev.id);
 
       // 1. Check access grant
-      const grantRes = await responderAuthFetch(`/ngo/evidence/${ev.id}/decrypt`);
+      const grantRes = await responderAuthFetch(`/medical/evidence/${ev.id}/decrypt`);
       if (!grantRes.ok) {
         const err = await grantRes.json();
         throw new Error(err.detail || 'Access denied or grant revoked.');
@@ -204,8 +205,8 @@ export const ResponderCaseDetailScreen = () => {
   };
 
   const caseIdShort = caseData.case_id.split('-')[0].toUpperCase();
-  const riskColor = caseData.risk_level === 'HIGH' ? '#FF3F6C' : caseData.risk_level === 'MEDIUM' ? '#D97706' : '#15803D';
-  const riskBg = caseData.risk_level === 'HIGH' ? '#FFE4E6' : caseData.risk_level === 'MEDIUM' ? '#FEF3C7' : '#DCFCE7';
+  const riskColor = caseData.risk_level === 'HIGH' ? '#2563EB' : caseData.risk_level === 'MEDIUM' ? '#D97706' : '#15803D';
+  const riskBg = caseData.risk_level === 'HIGH' ? '#DBEAFE' : caseData.risk_level === 'MEDIUM' ? '#FEF3C7' : '#DCFCE7';
 
   /* ─── Section Card ─── */
   const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -226,7 +227,7 @@ export const ResponderCaseDetailScreen = () => {
 
       {/* ═══ TOP BAR ═══ */}
       <View style={{
-        height: 56, backgroundColor: '#FF3F6C',
+        height: 56, backgroundColor: '#2563EB',
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, zIndex: 50,
       }}>
@@ -238,7 +239,7 @@ export const ResponderCaseDetailScreen = () => {
               backgroundColor: t.active ? '#FFF' : 'transparent',
               paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
             }}>
-              <Text style={{ color: t.active ? '#FF3F6C' : '#FFF', fontSize: 12, fontWeight: '700' }}>{t.label}</Text>
+              <Text style={{ color: t.active ? '#2563EB' : '#FFF', fontSize: 12, fontWeight: '700' }}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -254,9 +255,9 @@ export const ResponderCaseDetailScreen = () => {
 
           <TouchableOpacity onPress={() => setProfileDropdownOpen(!profileDropdownOpen)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={14} color="#FF3F6C" />
+              <User size={14} color="#2563EB" />
             </View>
-            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Responder</Text>
+            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Medical</Text>
             <ChevronDown size={12} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -293,10 +294,10 @@ export const ResponderCaseDetailScreen = () => {
           {[{ icon: FileText, label: 'Cases', active: true }].map(item => (
             <TouchableOpacity key={item.label} style={{
               alignItems: 'center', gap: 3,
-              ...(item.active ? { backgroundColor: '#FFE4E6', padding: 8, borderRadius: 10, width: 58 } : { padding: 8 }),
+              ...(item.active ? { backgroundColor: '#DBEAFE', padding: 8, borderRadius: 10, width: 58 } : { padding: 8 }),
             }}>
-              <item.icon size={18} color={item.active ? '#FF3F6C' : '#94A3B8'} />
-              <Text style={{ fontSize: 9, color: item.active ? '#FF3F6C' : '#94A3B8', fontWeight: item.active ? '700' : '500' }}>{item.label}</Text>
+              <item.icon size={18} color={item.active ? '#2563EB' : '#94A3B8'} />
+              <Text style={{ fontSize: 9, color: item.active ? '#2563EB' : '#94A3B8', fontWeight: item.active ? '700' : '500' }}>{item.label}</Text>
             </TouchableOpacity>
           ))}
           <View style={{ flex: 1 }} />
@@ -306,7 +307,7 @@ export const ResponderCaseDetailScreen = () => {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchCaseDetail} tintColor="#FF3F6C" />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchCaseDetail} tintColor="#2563EB" />}
         >
           {/* Breadcrumb + Back */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -321,13 +322,13 @@ export const ResponderCaseDetailScreen = () => {
 
           {/* Header row: title + Mark Resolved button */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, marginTop: 8 }}>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#1E293B' }}>Case #{caseIdShort}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1E293B' }}>Medical Case Details</Text>
             {caseData.case_status !== 'RESOLVED' && caseData.case_status !== 'CLOSED' && caseData.case_status !== 'CANCELLED' && (
               <TouchableOpacity
                 onPress={() => handleStatusUpdate('RESOLVED')}
                 disabled={updating}
                 style={{
-                  backgroundColor: '#FF3F6C', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8,
+                  backgroundColor: '#2563EB', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8,
                   opacity: updating ? 0.6 : 1,
                 }}>
                 <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>
@@ -383,7 +384,12 @@ export const ResponderCaseDetailScreen = () => {
 
             {/* Flags */}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-
+              {caseData.medical_help_requested && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DBEAFE', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}>
+                  <Activity size={14} color="#2563EB" />
+                  <Text style={{ color: '#2563EB', fontSize: 11, fontWeight: '700' }}>Medical Required</Text>
+                </View>
+              )}
               {caseData.has_location && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}>
                   <MapPin size={14} color="#15803D" />
@@ -418,7 +424,7 @@ export const ResponderCaseDetailScreen = () => {
                     <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{caseData.evidence_count} encrypted item(s)</Text>
                   </View>
                 </View>
-                <View style={{ backgroundColor: '#FF3F6C', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
+                <View style={{ backgroundColor: '#2563EB', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
                   <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 11 }}>{showEvidence ? 'HIDE' : (fetchingEvidence ? 'LOADING…' : 'VIEW')}</Text>
                 </View>
               </TouchableOpacity>
@@ -444,7 +450,7 @@ export const ResponderCaseDetailScreen = () => {
                     </View>
                     <Text style={{ color: '#94A3B8', fontSize: 11 }}>Captured: {new Date(ev.captured_at).toLocaleString()}</Text>
                     <TouchableOpacity style={{ marginTop: 8, alignSelf: 'flex-start' }} onPress={() => handleDecryptEvidence(ev)} disabled={decryptingId !== null}>
-                      <Text style={{ color: '#FF3F6C', fontSize: 12, fontWeight: '700' }}>{decryptingId === ev.id ? 'Decrypting…' : '→ Decrypt Payload'}</Text>
+                      <Text style={{ color: '#2563EB', fontSize: 12, fontWeight: '700' }}>{decryptingId === ev.id ? 'Decrypting…' : '→ Decrypt Payload'}</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -466,10 +472,10 @@ export const ResponderCaseDetailScreen = () => {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                     <Text style={{ color: '#334155', fontWeight: '600', fontSize: 13 }}>{alert.recipient_type} ({alert.channel})</Text>
                     <View style={{
-                      backgroundColor: alert.status === 'SENT' ? '#DCFCE7' : '#FFE4E6',
+                      backgroundColor: alert.status === 'SENT' ? '#DCFCE7' : '#DBEAFE',
                       paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4,
                     }}>
-                      <Text style={{ color: alert.status === 'SENT' ? '#15803D' : '#FF3F6C', fontSize: 10, fontWeight: '700' }}>{alert.status}</Text>
+                      <Text style={{ color: alert.status === 'SENT' ? '#15803D' : '#2563EB', fontSize: 10, fontWeight: '700' }}>{alert.status}</Text>
                     </View>
                   </View>
                   <Text style={{ color: '#94A3B8', fontSize: 11 }}>Delivery: {alert.delivery_mode}</Text>
@@ -481,7 +487,7 @@ export const ResponderCaseDetailScreen = () => {
           </SectionCard>
 
           {!caseData.assignment_id && caseData.case_status !== 'RESOLVED' && caseData.case_status !== 'CLOSED' && (
-            <TouchableOpacity onPress={handleAssignToMe} disabled={updating} style={{ backgroundColor: '#FF3F6C', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 14 }}>
+            <TouchableOpacity onPress={handleAssignToMe} disabled={updating} style={{ backgroundColor: '#2563EB', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>{updating ? 'Assigning...' : 'Assign to Me'}</Text>
             </TouchableOpacity>
           )}
@@ -494,7 +500,7 @@ export const ResponderCaseDetailScreen = () => {
                   <TouchableOpacity
                     onPress={() => handleStatusUpdate('ACCEPTED')}
                     disabled={updating}
-                    style={{ flex: 1, backgroundColor: '#FF3F6C', padding: 14, borderRadius: 8, alignItems: 'center' }}>
+                    style={{ flex: 1, backgroundColor: '#2563EB', padding: 14, borderRadius: 8, alignItems: 'center' }}>
                     <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>Accept Case</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -559,7 +565,7 @@ export const ResponderCaseDetailScreen = () => {
 
             <TouchableOpacity
               onPress={() => setDecryptedModalVisible(false)}
-              style={{ marginTop: 16, backgroundColor: '#FF3F6C', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}
+              style={{ marginTop: 16, backgroundColor: '#2563EB', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}
             >
               <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Close Preview</Text>
             </TouchableOpacity>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Button } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut } from 'lucide-react-native';
+import { MapPin, CreditCard, HelpCircle, ChevronRight, Package, LogOut, Shield } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 import { useLanguage, LanguageCode } from '../i18n/LanguageContext';
@@ -38,17 +38,23 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>
           {t('please_login')}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.navigate('Login')}
           style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', marginBottom: 12 }}
         >
           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{t('login')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.navigate('Signup')}
-          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.primary }}
+          style={{ backgroundColor: COLORS.surface, padding: 16, borderRadius: 12, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.primary, marginBottom: 12 }}
         >
           <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>{t('create_account')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ResponderLogin')}
+          style={{ backgroundColor: '#1E293B', padding: 16, borderRadius: 12, alignItems: 'center', width: '100%' }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Responder Portal Login (NGO / Medical)</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -246,6 +252,26 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               <HelpCircle size={18} color={COLORS.textSecondary} />
               <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '600' }}>
                 {t('customer_help_support')}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ResponderLogin')}
+            style={{
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Shield size={18} color="#FF3F6C" />
+              <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '700' }}>
+                Responder Portal (NGO / Medical)
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textMuted} />

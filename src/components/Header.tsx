@@ -13,14 +13,14 @@ interface HeaderProps {
   onBack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header = ({
   onOpenSearch,
   onOpenWishlist,
   onOpenCart,
   onGoHome,
   showBack = false,
   onBack,
-}) => {
+}: HeaderProps) => {
   const { cart, wishlist } = useApp();
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
