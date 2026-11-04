@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "havencart",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -40,12 +35,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
-        "projectId": "3c339f5b-a1f4-44e2-b088-8736be3d4f6c"
+        "projectId": "27041faf-731f-4181-9d0f-291d667dd2f6"
       }
-    }
+    },
+    "owner": "divs_6543"
   }
 }

@@ -220,6 +220,11 @@ export const ResponderDashboardScreen = () => {
             shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5,
             width: 150, padding: 4, zIndex: 100,
           }}>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={{ padding: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Shield size={14} color="#6366F1" />
+              <Text style={{ fontSize: 13, color: '#6366F1', fontWeight: '600' }}>Admin Dashboard</Text>
+            </TouchableOpacity>
+            <View style={{ height: 1, backgroundColor: '#F1F5F9' }} />
             <TouchableOpacity style={{ padding: 10 }}>
               <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500' }}>View Profile</Text>
             </TouchableOpacity>

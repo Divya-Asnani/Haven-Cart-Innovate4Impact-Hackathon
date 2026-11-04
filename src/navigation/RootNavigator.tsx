@@ -31,6 +31,7 @@ import { ResponderDashboardScreen } from '../screens/ResponderDashboardScreen';
 import { ResponderCaseDetailScreen } from '../screens/ResponderCaseDetailScreen';
 import { MedicalDashboardScreen } from '../screens/MedicalDashboardScreen';
 import { MedicalCaseDetailScreen } from '../screens/MedicalCaseDetailScreen';
+import { AdminDashboardScreen } from '../screens/AdminDashboardScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -133,6 +134,7 @@ export function RootNavigator() {
       <Stack.Screen name="ResponderCaseDetail" component={ResponderCaseDetailScreen} />
       <Stack.Screen name="MedicalDashboard" component={MedicalDashboardScreen} />
       <Stack.Screen name="MedicalCaseDetail" component={MedicalCaseDetailScreen} />
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
     </Stack.Navigator>
   );
 }

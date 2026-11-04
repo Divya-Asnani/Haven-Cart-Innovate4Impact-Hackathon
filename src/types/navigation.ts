@@ -40,6 +40,7 @@ export type RootStackParamList = {
   TrustedContacts: undefined;
   ResponderLogin: undefined;
   ResponderDashboard: undefined;
+  AdminDashboard: undefined;
   MedicalDashboard: undefined;
   MedicalCaseDetail: { c?: any; assignmentId?: string; caseId?: string };
   ResponderCaseDetail: { c?: any; assignmentId?: string };

@@ -46,3 +46,26 @@ class WishlistActionRequest(BaseModel):
 
 class ToggleWishlistRequest(BaseModel):
     product_id: str
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+class CreateOrganizationRequest(BaseModel):
+    org_name: str
+    portal_type: str  # "NGO" or "MEDICAL"
+    admin_name: str
+    admin_email: str
+    admin_phone: Optional[str] = None
+    initial_password: str
+    address: Optional[str] = None
+
+class AdminResetPasswordRequest(BaseModel):
+    user_id: Optional[str] = None
+    email: Optional[str] = None
+    new_password: str
+
+class ToggleStatusRequest(BaseModel):
+    target_type: str  # "USER" or "ORGANIZATION"
+    target_id: str
+    is_active: bool

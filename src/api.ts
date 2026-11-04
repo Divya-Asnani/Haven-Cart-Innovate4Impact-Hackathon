@@ -464,6 +464,11 @@ export const api = {
     return handleResponse(res);
   },
 
+  updateNGOCaseAssignment: async (assignmentId: string, status: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/ngo/assignments/${assignmentId}?status=${status}`, { method: 'PATCH' });
+    return handleResponse(res);
+  },
+
   updateNGOAssignment: async (assignmentId: string, status: string) => {
     const res = await responderAuthFetch(`${API_BASE_URL}/ngo/assignments/${assignmentId}?status=${status}`, {
       method: 'PATCH',
@@ -519,6 +524,66 @@ export const api = {
 
   resolveMedicalCase: async (caseId: string) => {
     const res = await responderAuthFetch(`${API_BASE_URL}/medical/cases/${caseId}/resolve`, { method: 'PATCH' });
+    return handleResponse(res);
+  },
+
+
+  // Super Admin Portal
+  getAdminOrganizations: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/admin/organizations`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  createOrganization: async (data: {
+    org_name: string;
+    portal_type: 'NGO' | 'MEDICAL';
+    admin_name: string;
+    admin_email: string;
+    admin_phone?: string;
+    initial_password: string;
+    address?: string;
+  }) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/admin/organizations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  adminResetPassword: async (data: {
+    user_id?: string;
+    email?: string;
+    new_password: string;
+  }) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/admin/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  adminToggleStatus: async (data: {
+    target_type: 'USER' | 'ORGANIZATION';
+    target_id: string;
+    is_active: boolean;
+  }) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/admin/toggle-status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  getAdminStats: async () => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/admin/stats`, { method: 'GET' });
+    return handleResponse(res);
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    const res = await responderAuthFetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
     return handleResponse(res);
   },
 };

@@ -1,3 +1,4 @@
+export type { LanguageCode, TranslationKey } from './translations';
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { translations, LanguageCode, TranslationKey } from './translations';

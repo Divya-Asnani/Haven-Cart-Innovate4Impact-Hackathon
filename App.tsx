@@ -28,7 +28,7 @@ export default function App() {
         <AppProvider>
           <AppInitGate>
             <NavigationContainer linking={linking}>
-              <StatusBar style="dark" backgroundColor="#FFFFFF" />
+              <StatusBar style="dark" />
               <RootNavigator />
             </NavigationContainer>
           </AppInitGate>

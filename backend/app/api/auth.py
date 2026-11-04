@@ -2,13 +2,13 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, status, Depends
 from postgrest.exceptions import APIError
-from app.schemas.requests import SignupRequest, LoginRequest, VerifyPinRequest, RefreshTokenRequest
+from app.schemas.requests import SignupRequest, LoginRequest, VerifyPinRequest, RefreshTokenRequest, ChangePasswordRequest
 from app.database.supabase_client import supabase
 import os
 from supabase import create_client
 from app.security.hashing import get_pin_hash, verify_pin
 from app.security.jwt import create_access_token, create_refresh_token, decode_token
-from app.api.auth_deps import get_current_user_id
+from app.api.auth_deps import get_current_user_id, resolve_candidate_user_ids
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -26,7 +26,7 @@ def _is_missing_profiles_table_error(exc: Exception) -> bool:
 
 
 def _build_auth_response(user_id: str, full_name: str, email: str, message: str | None = None, responder_role: str | None = None):
-    claims = {"sub": user_id}
+    claims = {"sub": user_id, "email": email}
     if responder_role:
         claims["responder_role"] = responder_role
     access_token = create_access_token(claims)
@@ -40,6 +40,7 @@ def _build_auth_response(user_id: str, full_name: str, email: str, message: str 
             "id": user_id,
             "full_name": full_name,
             "email": email,
+            "role": responder_role,
         },
     }
 
@@ -50,20 +51,19 @@ def _build_auth_response(user_id: str, full_name: str, email: str, message: str 
 
 
 def _get_verified_responder_roles(user_id: str) -> list[str]:
-    """Read active responder roles from the database, not from the client."""
+    """Read active responder roles from the database using candidate IDs."""
+    candidate_ids = resolve_candidate_user_ids(user_id)
     roles: list[str] = []
-    # Newer deployments store the portal role in responders; retain the
-    # established user_roles schema as a compatibility path for this project.
     try:
-        responder_rows = supabase.table("responders").select("role, is_active").eq("user_id", user_id).execute().data or []
+        responder_rows = supabase.table("responders").select("role, is_active").in_("user_id", candidate_ids).execute().data or []
         for row in responder_rows:
             role = str(row.get("role") or "").upper()
-            if row.get("is_active", True) and role in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"}:
+            if row.get("is_active", True) and role in {"NGO", "MEDICAL", "AUTHORITY", "ADMIN"} and role not in roles:
                 roles.append(role)
     except Exception:
         pass
     try:
-        rows = supabase.table("user_roles").select("is_active, roles(role_code, is_active)").eq("user_id", user_id).execute().data or []
+        rows = supabase.table("user_roles").select("is_active, roles(role_code, is_active)").in_("user_id", candidate_ids).execute().data or []
         for row in rows:
             role_data = row.get("roles") or {}
             role = str(role_data.get("role_code") or "").upper()
@@ -72,6 +72,26 @@ def _get_verified_responder_roles(user_id: str) -> list[str]:
     except Exception:
         pass
     return roles
+
+
+def _is_user_account_deactivated(user_id: str) -> bool:
+    """Check if the user explicitly has roles or memberships that are all deactivated."""
+    candidate_ids = resolve_candidate_user_ids(user_id)
+    try:
+        ur_res = supabase.table("user_roles").select("is_active").in_("user_id", candidate_ids).execute()
+        if ur_res.data:
+            has_any_active = any(r.get("is_active") for r in ur_res.data)
+            if not has_any_active:
+                return True
+        mem_res = supabase.table("responder_service_memberships").select("membership_status").in_("user_id", candidate_ids).execute()
+        if mem_res.data:
+            has_any_active_mem = any(r.get("membership_status") == "ACTIVE" for r in mem_res.data)
+            if not has_any_active_mem:
+                return True
+    except Exception:
+        pass
+    return False
+
 
 @router.post("/signup")
 async def signup(req: SignupRequest):
@@ -230,12 +250,20 @@ async def login(req: LoginRequest):
     if not auth_user_id:
         raise HTTPException(status_code=401, detail="Incorrect phone/email or password.")
 
+    # Check if account has been deactivated
+    if _is_user_account_deactivated(auth_user_id):
+        raise HTTPException(status_code=403, detail="Account is deactivated. Please contact administrator.")
+
     # Fetch full_name from profiles if not loaded yet
     if not full_name:
         try:
             profile_res = supabase.table("profiles").select("full_name").eq("id", auth_user_id).execute()
             if profile_res.data:
                 full_name = profile_res.data[0].get("full_name") or ""
+            else:
+                profile_res = supabase.table("profiles").select("full_name").eq("email", email).execute()
+                if profile_res.data:
+                    full_name = profile_res.data[0].get("full_name") or ""
         except Exception:
             pass
 
@@ -247,12 +275,84 @@ async def login(req: LoginRequest):
     verified_roles = _get_verified_responder_roles(auth_user_id)
     verified_role = verified_roles[0] if verified_roles else None
 
+    # If this is a responder login attempting to access a specific role, verify
+    if req.role and req.role.upper() != "USER":
+        requested_role = req.role.upper()
+        if requested_role not in verified_roles and "ADMIN" not in verified_roles:
+            raise HTTPException(status_code=403, detail=f"User does not have active {requested_role} privileges.")
+
     return _build_auth_response(
         user_id=auth_user_id,
         full_name=full_name,
         email=email,
         responder_role=verified_role,
     )
+
+@router.post("/change-password")
+async def change_password(req: ChangePasswordRequest, user_id: str = Depends(get_current_user_id)):
+    if not req.new_password or len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long.")
+    
+    candidate_ids = resolve_candidate_user_ids(user_id)
+    
+    # 1. Verify old password
+    verified = False
+    user_email = None
+    for cid in candidate_ids:
+        try:
+            prof_res = supabase.table("profiles").select("password_hash, email").eq("id", cid).execute()
+            if prof_res.data:
+                stored_hash = prof_res.data[0].get("password_hash")
+                user_email = prof_res.data[0].get("email")
+                if stored_hash and verify_pin(req.old_password, stored_hash):
+                    verified = True
+                    break
+        except Exception:
+            pass
+            
+    if not verified and user_email:
+        try:
+            temp_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+            sup_res = temp_client.auth.sign_in_with_password({"email": user_email, "password": req.old_password})
+            if sup_res and sup_res.user:
+                verified = True
+        except Exception:
+            pass
+
+    if not verified:
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
+    # 2. Update Supabase Auth password
+    target_auth_user_id = user_id
+    if user_email:
+        try:
+            for u in supabase.auth.admin.list_users():
+                if u.email == user_email:
+                    target_auth_user_id = str(u.id)
+                    break
+        except Exception:
+            pass
+            
+    try:
+        supabase.auth.admin.update_user_by_id(target_auth_user_id, {
+            "password": req.new_password,
+            "email_confirm": True
+        })
+    except Exception as e:
+        print(f"Supabase auth admin update error: {e}")
+
+    # 3. Update profiles password_hash
+    new_hash = get_pin_hash(req.new_password)
+    for cid in candidate_ids:
+        try:
+            supabase.table("profiles").update({
+                "password_hash": new_hash,
+                "security_pin_hash": new_hash
+            }).eq("id", cid).execute()
+        except Exception:
+            pass
+
+    return {"status": "success", "message": "Password changed successfully."}
 
 @router.post("/verify-pin")
 async def verify_device_pin(req: VerifyPinRequest, user_id: str = Depends(get_current_user_id)):
@@ -284,15 +384,18 @@ async def refresh_token(req: RefreshTokenRequest):
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
         
+    # Check if account has been deactivated
+    if _is_user_account_deactivated(user_id):
+        raise HTTPException(status_code=403, detail="Account is deactivated. Please contact administrator.")
+
     # Generate new access token
-    token_claims = {"sub": user_id}
-    if payload.get("responder_role"):
-        token_claims["responder_role"] = payload["responder_role"]
+    token_claims = {"sub": user_id, "email": payload.get("email")}
+    verified_roles = _get_verified_responder_roles(user_id)
+    if verified_roles:
+        token_claims["responder_role"] = verified_roles[0]
     access_token = create_access_token(token_claims)
     
-    # Update session in DB (simplistic, just update the most recent one)
     sessions_res = supabase.table("sessions").select("*").eq("user_id", user_id).order("last_active_at", desc=True).limit(1).execute()
-    
     if sessions_res.data:
         session_id = sessions_res.data[0]["id"]
         supabase.table("sessions").update({"last_active_at": datetime.now(timezone.utc).isoformat()}).eq("id", session_id).execute()
